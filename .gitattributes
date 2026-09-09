@@ -1,0 +1,11 @@
+# Product languages: Python engines + Helix TS UI.
+# Grok app-builder scaffolding is not the portfolio surface.
+scripts/** linguist-vendored
+src/lib/auth/** linguist-vendored
+src/lib/app-data/** linguist-vendored
+src/lib/multiplayer/** linguist-vendored
+src/components/preview-host-bridge.tsx linguist-vendored
+src/lib/preview-embedder-origin.ts linguist-vendored
+src/lib/preview-host-bridge.ts linguist-vendored
+public/** linguist-vendored
+server/** linguist-vendored

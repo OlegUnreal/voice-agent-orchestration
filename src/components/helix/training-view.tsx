@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -15,6 +15,7 @@ import {
   trainAdapters,
 } from "@/lib/helix/training";
 import type { Checkpoint, PromotionStage } from "@/lib/helix/types";
+import { getCheckpoints, trainEngine } from "@/lib/helix/engine";
 import { cn } from "@/lib/utils";
 
 const STAGES: PromotionStage[] = ["staging", "shadow", "canary", "production"];
@@ -29,7 +30,27 @@ export function TrainingView() {
     [loss],
   );
 
-  function train() {
+  useEffect(() => {
+    getCheckpoints().then((r) => {
+      if (r?.checkpoints) {
+        setCkpts(r.checkpoints);
+        if (r.loss) setLoss(r.loss);
+      }
+    });
+  }, []);
+
+  async function train() {
+    const py = await trainEngine();
+    if (py?.checkpoints) {
+      setCkpts(py.checkpoints);
+      setLoss({
+        loraLoss: py.loraLoss ?? [],
+        qloraLoss: py.qloraLoss ?? [],
+        lastTrainMs: py.lastTrainMs ?? 0,
+      });
+      setMsg(`Python TrainingOps: ${py.pairs} pairs in ${Number(py.lastTrainMs).toFixed(0)} ms (NumPy SGD + sklearn).`);
+      return;
+    }
     const r = trainAdapters();
     setLoss(adapterLoss());
     setCkpts(defaultCheckpoints());

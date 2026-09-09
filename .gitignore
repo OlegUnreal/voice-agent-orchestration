@@ -17,3 +17,8 @@ AGENTS.md
 AGENTS.project.md
 .project_id
 .node_modules.lock
+python/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

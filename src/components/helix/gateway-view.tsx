@@ -17,7 +17,7 @@ export function GatewayView() {
       <header>
         <h1 className="font-display text-3xl tracking-tight">AI gateway</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          Model routing, response cache, structured tool results, MCP servers, audit traces and an approval gate on rebalance.
+          FastAPI + Pydantic gateway: model routing, response cache, structured tools, MCP JSON-RPC, audit traces, approval on rebalance.
         </p>
       </header>
 

@@ -1,18 +1,30 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GOLDEN, runEvalSuite, type RetrieverKind } from "@/lib/helix/evals";
 import { gateCheck, getAdapterWeights } from "@/lib/helix/training";
+import { getEvalReport } from "@/lib/helix/engine";
 import { cn, formatNum } from "@/lib/utils";
 
 export function EvalView() {
   const [kind, setKind] = useState<RetrieverKind>("lora");
   const [ran, setRan] = useState(false);
-  const metrics = useMemo(
+  const [py, setPy] = useState<null | { metrics: ReturnType<typeof runEvalSuite>; gates: ReturnType<typeof gateCheck>; datasetVersion?: string }>(null);
+  const local = useMemo(
     () => runEvalSuite(kind, getAdapterWeights(kind)),
     [kind],
   );
-  const gates = gateCheck(metrics);
+  useEffect(() => {
+    let live = true;
+    getEvalReport({ data: { kind } }).then((r) => {
+      if (live && r?.metrics) setPy(r);
+    });
+    return () => {
+      live = false;
+    };
+  }, [kind]);
+  const metrics = py?.metrics ?? local;
+  const gates = py?.gates ?? gateCheck(metrics);
 
   return (
     <div className="space-y-5">
@@ -20,7 +32,7 @@ export function EvalView() {
         <div>
           <h1 className="font-display text-3xl tracking-tight">EvalForge</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Golden set of {GOLDEN.length} queries. Retrieval, intent, tool-selection, groundedness, latency and cost — the same gates that promote a checkpoint.
+            Golden set of {GOLDEN.length} queries{py?.datasetVersion ? ` · ${py.datasetVersion}` : ""}. Retrieval, intent, tool-selection, groundedness, latency and cost — FastAPI EvalForge.
           </p>
         </div>
         <Button size="pill" variant="outline" onClick={() => setRan(true)}>

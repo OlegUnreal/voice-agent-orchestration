@@ -1,19 +1,43 @@
 # Helix — Voice agent orchestration
 
-Portfolio implementation of the AI/ML stack on Oleh Kornii’s résumé, as a **voice-first** copilot. No Java. Python-style engines (regimes, RAG, evals, LoRA-style rerank) run in the app; Grok is used only to speak after tools return numbers.
+Voice-first financial copilot. **Python is the source of truth** for quant, RAG, EvalForge and TrainingOps (FastAPI, Pydantic, pandas, NumPy, scikit-learn). TypeScript is the voice/UI shell. Grok only speaks after tools return numbers.
 
 [![CI](https://github.com/OlegUnreal/voice-agent-orchestration/actions/workflows/ci.yml/badge.svg)](https://github.com/OlegUnreal/voice-agent-orchestration/actions/workflows/ci.yml)
 
-> **LLM does not pick tools and does not invent VaR, Sharpe, or prices.** The control loop is TypeScript. Grok sees JSON *after* the engines run.
+> **LLM does not pick tools and does not invent VaR, Sharpe, or prices.** The control loop is FastAPI + Pydantic. Grok sees JSON *after* the engines run.
+
+## Python engines (résumé stack)
+
+| Résumé tool | In `python/helix/` |
+|---|---|
+| FastAPI + Pydantic | [`gateway/app.py`](python/helix/gateway/app.py) — structured routes, TTL cache, JSON-RPC `/mcp` |
+| pandas / NumPy | [`market.py`](python/helix/market.py) — GBM tape, regimes, z-score anomalies, SMA backtest, HS/parametric/MC VaR |
+| RAG + embeddings + rerank | [`embeddings.py`](python/helix/embeddings.py), [`rag.py`](python/helix/rag.py), [`reranker.py`](python/helix/reranker.py) |
+| scikit-learn | LogisticRegression sanity-check next to NumPy SGD LoRA r8 / QLoRA r4 |
+| EvalForge | [`evals.py`](python/helix/evals.py) — golden set, Recall@K, MRR, nDCG, groundedness, dataset version hash |
+| TrainingOps | [`training.py`](python/helix/training.py) — qrels → adapters → staging/shadow/canary/production |
+| MCP tools | [`mcp.py`](python/helix/mcp.py) + `POST /mcp` (`tools/list`, `tools/call`; `propose_rebalance` → 403) |
+
+```bash
+cd python
+python -m venv .venv && .venv/bin/pip install -e ".[dev]"
+.venv/bin/pytest -q
+.venv/bin/helix serve
+.venv/bin/helix turn "What is BTC's current regime?"
+```
+
+Voice, EvalForge and TrainingOps in the UI call this gateway (`HELIX_ENGINE_URL`). If it is down, the TypeScript engines are a fallback so the demo still runs.
 
 ## Architecture
+
 
 Helix is a **tool-first supervisor**, not ReAct and not a multi-LLM swarm. Two hops per turn: supervisor routes intent, one specialist calls a governed tool bundle.
 
 ```mermaid
 flowchart TD
-  U["User: STT or text"] --> SF["runHelixTurn"]
-  SF --> ORC["runOrchestrator"]
+  U["User: STT or text"] --> SF["runHelixTurn TS shell"]
+  SF --> GW["FastAPI gateway :8090"]
+  GW --> ORC["run_orchestrator"]
   ORC --> SUP["supervisor: classifyIntent"]
   SUP --> Q["quant"]
   SUP --> C["copilot"]
@@ -37,14 +61,14 @@ A specialist is a **tool-selection policy**, not a second language model. For `p
 
 | Agent | Intents | Tools |
 |---|---|---|
-| **supervisor** | all | `classifyIntent` in [`router.ts`](src/lib/helix/router.ts) |
+| **supervisor** | all | `classify_intent` in [`router.py`](python/helix/router.py) |
 | **quant** | `regime`, `anomaly`, `backtest` | snapshot, regime, z-score events, SMA backtest |
 | **copilot** | `risk`, `portfolio` | VaR / CVaR / scenario P&L |
 | **research** | `research` | hybrid RAG + logistic rerank |
 | **eval** | `eval` | golden-set metrics |
 | **training** | `training` | checkpoint registry |
 
-Intent → agent map lives in [`orchestrator.ts`](src/lib/helix/orchestrator.ts):
+Intent → agent map lives in [`orchestrator.py`](python/helix/orchestrator.py):
 
 ```ts
 const INTENT_AGENT = {
@@ -150,11 +174,12 @@ A turn is `grounded` when citation ids exist **or** a quant tool fired (snapshot
 ## Layout
 
 ```
-src/lib/helix/           engines (market, rag, evals, training, orchestrator, mcp)
-src/lib/helix/router.ts  supervisor intent classifier
-src/lib/helix/chat.ts    Grok synthesis + TTS (server)
+python/helix/            FastAPI gateway + engines (source of truth)
+src/lib/helix/           TypeScript shell + fallback
+src/lib/helix/engine.ts  HTTP client to the Python gateway
 src/components/helix/    Voice, Markets, RAG, Gateway, Evals, Training
 ```
+
 
 ## Run
 

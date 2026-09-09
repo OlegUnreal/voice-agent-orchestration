@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { grokToolPayload, runOrchestrator } from "./orchestrator";
+import { pythonTurn } from "./engine";
+import { grokToolPayload } from "./orchestrator";
 import type { OrchestratorResult } from "./types";
 
 const cache = new Map<string, { spoken: string; at: number }>();
@@ -9,7 +10,7 @@ function cacheKey(text: string) {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-async function synthesize(result: OrchestratorResult, query: string) {
+async function synthesize(result: OrchestratorResult & { grokPayload?: unknown }, query: string) {
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) {
     return { spoken: result.fallbackSpoken, ai: false as const, model: "local-tools" };
@@ -19,7 +20,10 @@ async function synthesize(result: OrchestratorResult, query: string) {
   if (hit && Date.now() - hit.at < TTL) {
     return { spoken: hit.spoken, ai: true as const, model: "grok-4.5-cache" };
   }
-  const payload = grokToolPayload(result);
+  const payload =
+    "grokPayload" in result && result.grokPayload
+      ? result.grokPayload
+      : grokToolPayload(result);
   const res = await fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -58,7 +62,7 @@ export const runHelixTurn = createServerFn({ method: "POST" })
   .validator((input: { text: string }) => input)
   .handler(async ({ data }) => {
     const text = data.text.slice(0, 800);
-    const local = runOrchestrator(text);
+    const local = await pythonTurn(text);
     const t0 = Date.now();
     const syn = await synthesize(local, text);
     return {

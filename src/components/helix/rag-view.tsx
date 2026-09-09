@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { lexicalRetrieve, retrieve } from "@/lib/helix/rag";
 import { CORPUS } from "@/lib/helix/corpus";
+import { retrieveEngine } from "@/lib/helix/engine";
 import { cn } from "@/lib/utils";
 
 export function RagView() {
@@ -14,6 +15,15 @@ export function RagView() {
     [query, chrono],
   );
   const lex = useMemo(() => lexicalRetrieve(query, 6), [query]);
+  const [pyHits, setPyHits] = useState<typeof hybrid | null>(null);
+
+  useEffect(() => {
+    retrieveEngine({ data: { query, chronological: chrono } }).then((r) => {
+      if (r?.hybrid) setPyHits(r.hybrid);
+    });
+  }, [query, chrono]);
+
+  const shown = pyHits ?? hybrid;
 
   return (
     <div className="space-y-5">
@@ -50,7 +60,7 @@ export function RagView() {
       </label>
       <div className="grid gap-4 lg:grid-cols-2">
         <RankList title="Lexical" rows={lex} />
-        <RankList title="Hybrid + rerank" rows={hybrid} accent />
+        <RankList title="Hybrid + rerank" rows={shown} accent />
       </div>
       <section className="rounded-3xl border border-border bg-surface p-5">
         <h2 className="font-display text-lg">Corpus</h2>
@@ -74,7 +84,7 @@ function RankList({
   accent,
 }: {
   title: string;
-  rows: ReturnType<typeof retrieve>;
+  rows: { doc: { id: string; title: string; type: string }; score: number; cosine: number; recency: number }[];
   accent?: boolean;
 }) {
   return (

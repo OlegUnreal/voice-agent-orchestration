@@ -1,0 +1,50 @@
+"""CLI: helix serve | turn | eval | train."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="helix", description="Helix Python engines")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    sub.add_parser("serve", help="Run the FastAPI gateway")
+    t = sub.add_parser("turn", help="Run one supervisor turn")
+    t.add_argument("text", nargs="+")
+    e = sub.add_parser("eval", help="Run EvalForge golden suite")
+    e.add_argument("--kind", default="lora")
+    sub.add_parser("train", help="Train LoRA / QLoRA adapters")
+
+    args = parser.parse_args(argv)
+    if args.cmd == "serve":
+        from helix.gateway.app import run
+
+        run()
+        return 0
+    if args.cmd == "turn":
+        from helix.orchestrator import grok_tool_payload, run_orchestrator
+
+        result = run_orchestrator(" ".join(args.text))
+        print(result.fallbackSpoken)
+        print("---")
+        print(json.dumps(grok_tool_payload(result), indent=2, default=str)[:2000])
+        return 0
+    if args.cmd == "eval":
+        from helix.evals import gate_check, run_eval_suite
+
+        m = run_eval_suite(args.kind)
+        print(json.dumps({"metrics": m.model_dump(), "gates": gate_check(m)}, indent=2))
+        return 0
+    if args.cmd == "train":
+        from helix.training import train_adapters
+
+        print(json.dumps(train_adapters(), indent=2, default=str))
+        return 0
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
