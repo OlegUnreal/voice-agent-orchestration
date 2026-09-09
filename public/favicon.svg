@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Helix">
+  <rect width="32" height="32" rx="7" fill="#09090b"/>
+  <path
+    fill="none"
+    stroke="#c8ccd4"
+    stroke-width="2.25"
+    stroke-linecap="round"
+    d="M11 7c0 2.4 10 2.4 10 5.5S11 15.6 11 18.5 21 21.6 21 25"/>
+</svg>

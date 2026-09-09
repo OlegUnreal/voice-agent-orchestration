@@ -1,0 +1,67 @@
+import type { McpTool } from "./types";
+
+export const MCP_TOOLS: McpTool[] = [
+  {
+    name: "get_market_snapshot",
+    server: "market",
+    description: "Last price, SMAs, 20d vol and regime for a ticker.",
+    governed: "auto",
+    schema: { ticker: "BTC|ETH|SOL|NVDA|AAPL" },
+  },
+  {
+    name: "detect_regime",
+    server: "market",
+    description: "Classify bull-trend, bear-trend, range, or high-vol.",
+    governed: "auto",
+    schema: { ticker: "string" },
+  },
+  {
+    name: "detect_anomalies",
+    server: "market",
+    description: "Return, volume, funding and inflow z-score events.",
+    governed: "auto",
+    schema: { ticker: "string", lookback: "number" },
+  },
+  {
+    name: "run_backtest",
+    server: "market",
+    description: "SMA crossover backtest with costs, Sharpe, max DD.",
+    governed: "auto",
+    schema: { ticker: "string", fast: "number", slow: "number" },
+  },
+  {
+    name: "estimate_risk",
+    server: "market",
+    description: "VaR, CVaR, scenario P&L for the default book.",
+    governed: "auto",
+    schema: { shockBtc: "number" },
+  },
+  {
+    name: "retrieve_evidence",
+    server: "retrieval",
+    description: "Time-aware hybrid RAG with cross-encoder rerank.",
+    governed: "auto",
+    schema: { query: "string", k: "number" },
+  },
+  {
+    name: "get_eval_report",
+    server: "eval",
+    description: "Golden-set Recall@K, MRR, nDCG, tool and groundedness.",
+    governed: "auto",
+    schema: {},
+  },
+  {
+    name: "get_checkpoint_status",
+    server: "eval",
+    description: "Model registry stages and promotion gates.",
+    governed: "auto",
+    schema: {},
+  },
+  {
+    name: "propose_rebalance",
+    server: "market",
+    description: "Draft a portfolio tilt. Requires human approval.",
+    governed: "approve",
+    schema: { ticker: "string", deltaWeight: "number", reason: "string" },
+  },
+];
