@@ -17,6 +17,7 @@ Intent = Literal[
     "portfolio",
     "eval",
     "training",
+    "memory",
     "general",
 ]
 AgentId = Literal["supervisor", "quant", "research", "copilot", "eval", "training"]
@@ -236,3 +237,7 @@ class OrchestratorResult(BaseModel):
     fallbackSpoken: str
     grounded: bool
     datasetVersion: str | None = None
+    verified: bool = True
+    verifyLeaks: list[str] = Field(default_factory=list)
+    traceId: str | None = None
+    memory: list[dict[str, Any]] = Field(default_factory=list)

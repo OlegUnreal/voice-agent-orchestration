@@ -18,6 +18,9 @@ AGENTS.project.md
 .project_id
 .node_modules.lock
 python/.venv/
+python/data/*.jsonl
+python/data/*.sqlite
+__pycache__/
 __pycache__/
 *.pyc
 .pytest_cache/

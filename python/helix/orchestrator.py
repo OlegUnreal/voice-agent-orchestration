@@ -21,9 +21,13 @@ from helix.models import (
     OrchestratorResult,
     ToolCall,
 )
+from helix.ledger import log_turn, log_verify_fail
+from helix.memory import list_facts, parse_remember, recall, remember
+from helix.oktrader.live import allow_simulator, json_preview, try_live_turn
 from helix.rag import retrieve
 from helix.router import classify_intent
-from helix.oktrader.live import allow_simulator, json_preview, try_live_turn
+from helix.training import default_checkpoints
+from helix.verifier import enforce
 
 INTENT_AGENT: dict[Intent, AgentId] = {
     "regime": "quant",
@@ -34,6 +38,7 @@ INTENT_AGENT: dict[Intent, AgentId] = {
     "portfolio": "copilot",
     "eval": "eval",
     "training": "training",
+    "memory": "copilot",
     "general": "supervisor",
 }
 
@@ -51,6 +56,10 @@ def _summary(name: str, value) -> str:
         return f"VaR95 {value.var95:.0f} vol {value.volAnn * 100:.1f}%"
     if name == "retrieve_evidence":
         return ", ".join(x.doc.id for x in value[:3])
+    if name == "memory_recall":
+        return f"{len(value)} facts"
+    if name == "memory_write":
+        return value.get("key") if isinstance(value, dict) else "stored"
     return "ok"
 
 
@@ -146,6 +155,21 @@ def run_orchestrator(query: str) -> OrchestratorResult:
         prod = next((c for c in ckpts if c.stage == "production"), None)
         if prod:
             numbers["production"] = prod.name
+    parsed = parse_remember(query)
+    if parsed:
+        key, value = parsed
+        stored, call = _timed(
+            "memory_write",
+            {"key": key, "source": "user"},
+            lambda: remember(key, value, source="user"),
+        )
+        tools.append(call)
+        numbers["memoryStored"] = stored["id"]
+    mem_hits, call = _timed("memory_recall", {"query": query, "k": 5}, lambda: recall(query, k=5))
+    if not mem_hits and intent == "memory":
+        mem_hits = list_facts(8)
+    tools.append(call)
+    numbers["memoryCount"] = len(mem_hits)
 
     hops.append(
         AgentHop(
@@ -159,8 +183,27 @@ def run_orchestrator(query: str) -> OrchestratorResult:
         for d in (retrieved or [])[:4]
     ]
     spoken = _speak(intent, ticker, snapshot_res, anomalies, backtest, risk, retrieved, numbers)
-    grounded = bool(citations) or bool(snapshot_res or backtest or risk) or bool(numbers.get("live"))
-    return OrchestratorResult(
+    payload_for_verify = {
+        "numbers": numbers,
+        "tools": [t.summary for t in tools],
+        "citations": [c.model_dump() for c in citations],
+        "snapshot": snapshot_res.model_dump() if snapshot_res else None,
+        "backtest": backtest.model_dump() if backtest else None,
+        "risk": risk.model_dump() if risk else None,
+        "memory": mem_hits,
+    }
+    checked = enforce(spoken, payload_for_verify, spoken)
+    if not checked["ok"]:
+        log_verify_fail({"query": query, "spoken": spoken, "leaks": checked["leaks"]})
+        spoken = checked["spoken"]
+    grounded = (
+        bool(citations)
+        or bool(snapshot_res or backtest or risk)
+        or bool(numbers.get("live"))
+        or bool(mem_hits)
+        or bool(numbers.get("memoryStored"))
+    ) and checked["ok"]
+    result = OrchestratorResult(
         intent=intent,
         hops=hops,
         tools=tools,
@@ -174,7 +217,25 @@ def run_orchestrator(query: str) -> OrchestratorResult:
         fallbackSpoken=spoken,
         grounded=grounded,
         datasetVersion=dataset_version(),
+        verified=checked["ok"],
+        verifyLeaks=checked["leaks"],
+        memory=mem_hits,
     )
+    result.traceId = log_turn(
+        {
+            "query": query,
+            "intent": intent,
+            "tools": [t.name for t in tools],
+            "spoken": spoken,
+            "verified": result.verified,
+            "leaks": result.verifyLeaks,
+            "grounded": grounded,
+            "latencyMs": (time.perf_counter() - t_start) * 1000,
+            "retrievalHit": bool(retrieved),
+            "live": bool(numbers.get("live")),
+        }
+    )
+    return result
 
 
 def grok_tool_payload(result: OrchestratorResult) -> dict:
@@ -213,6 +274,8 @@ def grok_tool_payload(result: OrchestratorResult) -> dict:
         "gates": gate_check(run_eval_suite("lora")),
         "datasetVersion": result.datasetVersion,
         "live": bool((result.numbers or {}).get("live")),
+        "memory": result.memory,
+        "verified": result.verified,
     }
 
 
@@ -234,6 +297,11 @@ def _speak(intent, ticker, snap, anomalies, backtest, risk, retrieved, numbers) 
     if numbers.get("live") and numbers.get("liveToolsAvailable"):
         names = ", ".join(str(n) for n in numbers["liveToolsAvailable"][:8])
         return f"MCP is up. Available tools: {names}. Ask for a price, position, or risk preflight."
+    if intent == "memory":
+        if numbers.get("memoryStored"):
+            return "Stored with source=user. I will recall it through the memory tool, not as a model guess."
+        facts = numbers.get("memoryCount") or 0
+        return f"Memory holds {facts} matching facts. Ask me to remember a mandate, a risk cap, or a symbol constraint."
     if intent == "regime" and snap:
         return (
             f"{ticker} is in a {snap.regime.replace('-', ' ')} regime. Last {snap.price:.2f}, "

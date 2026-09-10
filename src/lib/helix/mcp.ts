@@ -64,4 +64,18 @@ export const MCP_TOOLS: McpTool[] = [
     governed: "approve",
     schema: { ticker: "string", deltaWeight: "number", reason: "string" },
   },
+  {
+    name: "memory_recall",
+    server: "memory",
+    description: "Read facts with source and timestamp. Auto.",
+    governed: "auto",
+    schema: { query: "string" },
+  },
+  {
+    name: "memory_write",
+    server: "memory",
+    description: "Store a fact with provenance.",
+    governed: "auto",
+    schema: { key: "string", value: "string" },
+  },
 ];

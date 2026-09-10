@@ -18,6 +18,8 @@ from helix.market import (
     get_bars,
     snapshot,
 )
+from helix.ledger import export_dataset, list_traces, log_feedback, log_verify_fail
+from helix.memory import forget, list_facts, remember, recall
 from helix.mcp import tools_as_json
 from helix.models import (
     Checkpoint,
@@ -39,6 +41,7 @@ from helix.training import (
     promote,
     train_adapters,
 )
+from helix.verifier import enforce
 
 app = FastAPI(
     title="Helix AI Gateway",
@@ -54,6 +57,28 @@ def _checkpoints() -> list[Checkpoint]:
     if not _ckpts:
         _ckpts = default_checkpoints()
     return _ckpts
+
+
+class VerifyRequest(BaseModel):
+    spoken: str
+    fallbackSpoken: str
+    payload: dict[str, Any] = {}
+    traceId: str | None = None
+    query: str = ""
+
+
+class FeedbackRequest(BaseModel):
+    traceId: str
+    verdict: Literal["up", "down"]
+    spoken: str = ""
+    query: str = ""
+    correction: str | None = None
+
+
+class MemoryWrite(BaseModel):
+    key: str
+    value: str
+    source: str = "user"
 
 
 class RouteDecision(BaseModel):
@@ -167,15 +192,59 @@ def training_promote(req: PromoteRequest) -> dict[str, Any]:
     return {"checkpoints": [c.model_dump() for c in _ckpts]}
 
 
-@app.get("/v1/mcp/tools")
-def mcp_tools() -> dict[str, Any]:
-    return {"tools": tools_as_json()}
+@app.post("/v1/verify")
+def verify(req: VerifyRequest) -> dict[str, Any]:
+    checked = enforce(req.spoken, req.payload, req.fallbackSpoken)
+    if not checked["ok"]:
+        log_verify_fail(
+            {
+                "traceId": req.traceId,
+                "query": req.query,
+                "spoken": req.spoken,
+                "leaks": checked["leaks"],
+            }
+        )
+    return checked
+
+
+@app.post("/v1/feedback")
+def feedback(req: FeedbackRequest) -> dict[str, Any]:
+    rec = log_feedback(
+        req.traceId,
+        req.verdict,
+        req.spoken,
+        req.query,
+        correction=req.correction,
+    )
+    return {"ok": True, "feedback": rec}
+
+
+@app.get("/v1/memory")
+def memory_get(q: str = "", k: int = 8) -> dict[str, Any]:
+    facts = recall(q, k=k) if q.strip() else list_facts(k)
+    return {"facts": facts}
+
+
+@app.post("/v1/memory")
+def memory_post(req: MemoryWrite) -> dict[str, Any]:
+    return remember(req.key, req.value, source=req.source)
+
+
+@app.delete("/v1/memory/{key}")
+def memory_delete(key: str) -> dict[str, Any]:
+    return {"deleted": forget(key)}
+
+
+@app.get("/v1/dataset")
+def dataset() -> dict[str, Any]:
+    return export_dataset()
 
 
 @app.get("/v1/gateway/traces")
 def traces() -> dict[str, Any]:
-    rows = [t.model_dump() for t in SEED_TRACES]
-    return {"traces": rows, "cache": _cache.stats()}
+    live_rows = list_traces(80)
+    seed = [t.model_dump() for t in SEED_TRACES]
+    return {"traces": live_rows + seed, "cache": _cache.stats(), "live": len(live_rows)}
 
 
 @app.post("/mcp")

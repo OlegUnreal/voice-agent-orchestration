@@ -146,6 +146,7 @@ const INTENT_TOOLS: Record<Intent, string[]> = {
   portfolio: ["estimate_risk", "retrieve_evidence"],
   eval: ["get_eval_report"],
   training: ["get_checkpoint_status"],
+  memory: ["memory_recall"],
   general: ["retrieve_evidence"],
 };
 

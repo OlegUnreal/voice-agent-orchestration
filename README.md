@@ -6,26 +6,41 @@ Voice-first copilot over **your** tools. Python owns the numbers (FastAPI, Pydan
 
 > **The model does not pick tools and does not invent prices, VaR, or positions.** That is the whole product.
 
-## Why this exists (vs ChatGPT / Grok chat)
+## Why this exists
 
-ChatGPT and Grok are general language models. They are good at talking. They are bad at being a broker:
+A chat box with a strong language model is good at talking. It is a weak broker — **including Grok in a chat, and every other general assistant in the same shape.** No slight: that is what those products are for. Helix exists because that shape fails at a few jobs they were never designed to do.
 
-- they will **invent** a last price or a VaR if the tool is slow or missing
-- they will **call a write tool** if the prompt is sloppy
-- your API keys, fills and positions should not live in a chat vendor
-- you cannot see *which* tool produced a number
+| Job | General chat (Grok chat, Claude, Gemini, local UIs — same class) | Helix |
+|---|---|---|
+| Last price, VaR, fill | Will **speak a number** if the tool is slow or missing | Speaks only numbers that already exist in tool JSON. Otherwise **refuses** |
+| Write tools (order, cancel, kill-switch) | The model often **picks the tool** | The model never picks tools. Write tools are listed and **never auto-run** |
+| Where did this fact come from? | Citations as decoration | Hops + tool JSON + source on every memory fact |
+| After a week of use | Vendor logs you cannot train on | **Trace ledger** → SFT/DPO pairs from your thumbs |
+| “Remember my risk cap” | Vibes in the weights | SQLite fact with `source` and `observedAt` |
+| Agent spend | Invisible tool loops | Budget/latency on the turn |
 
-Helix is the opposite contract:
+That is why we built this: not a better conversationalist — a **control plane** between you and tools. The language model is the mouth. Helix is the hands that are not allowed to type a price or submit an order.
 
-1. Supervisor routes intent with rules + embeddings — not the LLM.
-2. Governed tools run (local engines **or** your MCP).
-3. Write tools (`order`, `cancel`, `kill-switch`, `execute`) are listed and **never auto-run**.
-4. Grok (optional) receives JSON *after* that and may only narrate it.
-5. If MCP is down and `HELIX_ALLOW_SIMULATOR=false`, Helix **refuses** to speak a price.
+If you only want a conversation, use a chat product. If you want a voice layer over **your** MCP that cannot hallucinate a book, clone this.
 
-Use this repo if you have (or want) a personal/market MCP and need a voice layer that cannot trade by accident. If you only want a chatbot, use ChatGPT.
+Personal live wiring (Tailscale, OK-Trader) is **not** in this public tree.
 
-Personal OK-Trader / Tailscale wiring is **not** in this public tree. It lives in a private overlay repo.
+## Skills that close those gaps
+
+| Skill | Python | What it writes |
+|---|---|---|
+| Verifier | [`verifier.py`](python/helix/verifier.py) | `verify_fails.jsonl` when speech leaks a number |
+| Trace ledger | [`ledger.py`](python/helix/ledger.py) | `traces.jsonl` every turn |
+| Feedback | `POST /v1/feedback` | `preferences.jsonl` — SFT on thumbs-up, DPO on correction |
+| Memory | [`memory.py`](python/helix/memory.py) | SQLite facts with provenance |
+
+```bash
+.venv/bin/helix turn "Remember that isolated 1x and 1 USDT risk cap"
+.venv/bin/helix recall "risk cap"
+.venv/bin/helix export          # SFT / DPO counts
+```
+
+Thumbs on each Helix reply in the voice UI. Data stays in `python/data/` (gitignored). Train later; collect now.
 
 ## Python engines
 
@@ -38,6 +53,9 @@ Personal OK-Trader / Tailscale wiring is **not** in this public tree. It lives i
 | EvalForge | [`evals.py`](python/helix/evals.py) — golden set, Recall@K, MRR, nDCG, groundedness |
 | TrainingOps | [`training.py`](python/helix/training.py) — qrels → adapters → staging/shadow/canary/production |
 | MCP client | [`oktrader/mcp_client.py`](python/helix/oktrader/mcp_client.py) — Streamable HTTP `initialize` → `tools/list` → `tools/call` |
+| Verifier | [`verifier.py`](python/helix/verifier.py) — speech may not contain numbers absent from tools |
+| Ledger + prefs | [`ledger.py`](python/helix/ledger.py) — traces / SFT / DPO JSONL |
+| Memory | [`memory.py`](python/helix/memory.py) — SQLite facts with source + time |
 
 ```bash
 cd python
@@ -93,10 +111,13 @@ flowchart TD
   R --> TOOLS
   E --> TOOLS
   T --> TOOLS
-  TOOLS --> PAY["grokToolPayload JSON"]
-  PAY --> GROK["Grok-4.5 synthesis · temp 0.2 · max 420"]
-  GROK --> TTS["optional Orion TTS"]
-  GROK --> UI["Voice UI: hops, tools, citations"]
+  TOOLS --> VER["verifier: numbers ⊆ tool JSON"]
+  VER --> PAY["grokToolPayload JSON"]
+  PAY --> GROK["optional Grok narration · temp 0.2"]
+  GROK --> VER
+  VER --> TTS["optional TTS"]
+  VER --> LEDGER["traces.jsonl + prefs"]
+  LEDGER --> UI["Voice UI: hops, tools, thumbs"]
 ```
 
 A specialist is a **tool-selection policy**, not a second language model. For `portfolio`, copilot pulls snapshot + regime + anomalies + risk + RAG in one bundle.

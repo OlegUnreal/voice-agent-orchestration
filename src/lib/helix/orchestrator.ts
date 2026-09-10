@@ -70,6 +70,7 @@ const INTENT_AGENT: Record<Intent, AgentId> = {
   portfolio: "copilot",
   eval: "eval",
   training: "training",
+  memory: "copilot",
   general: "supervisor",
 };
 

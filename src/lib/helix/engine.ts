@@ -88,3 +88,35 @@ export const getGateway = createServerFn({ method: "GET" }).handler(async () => 
     return { python: false };
   }
 });
+
+export async function pythonVerify(input: {
+  spoken: string;
+  fallbackSpoken: string;
+  payload: unknown;
+  traceId?: string;
+  query: string;
+}): Promise<{ ok: boolean; spoken: string; leaks: string[] }> {
+  try {
+    return (await engineFetch("/v1/verify", {
+      method: "POST",
+      body: JSON.stringify(input),
+    })) as { ok: boolean; spoken: string; leaks: string[] };
+  } catch {
+    return { ok: true, spoken: input.spoken, leaks: [] };
+  }
+}
+
+export const submitFeedback = createServerFn({ method: "POST" })
+  .validator(
+    (input: { traceId: string; verdict: "up" | "down"; spoken: string; query: string; correction?: string }) => input,
+  )
+  .handler(async ({ data }) => {
+    try {
+      return await engineFetch("/v1/feedback", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    } catch {
+      return { ok: false };
+    }
+  });

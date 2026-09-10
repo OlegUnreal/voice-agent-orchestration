@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { pythonTurn } from "./engine";
+import { pythonTurn, pythonVerify } from "./engine";
 import { grokToolPayload } from "./orchestrator";
 import type { OrchestratorResult } from "./types";
 
@@ -54,7 +54,6 @@ async function synthesize(result: OrchestratorResult & { grokPayload?: unknown }
     choices?: { message?: { content?: string } }[];
   };
   const spoken = body.choices?.[0]?.message?.content?.trim() || result.fallbackSpoken;
-  cache.set(key, { spoken, at: Date.now() });
   return { spoken, ai: true as const, model: "grok-4.5" };
 }
 
@@ -65,6 +64,21 @@ export const runHelixTurn = createServerFn({ method: "POST" })
     const local = await pythonTurn(text);
     const t0 = Date.now();
     const syn = await synthesize(local, text);
+    const payload =
+      "grokPayload" in local && local.grokPayload
+        ? local.grokPayload
+        : grokToolPayload(local);
+    const checked = await pythonVerify({
+      spoken: syn.spoken,
+      fallbackSpoken: local.fallbackSpoken,
+      payload,
+      traceId: local.traceId,
+      query: text,
+    });
+    const spoken = checked.spoken || local.fallbackSpoken;
+    if (syn.ai && checked.ok) {
+      cache.set(cacheKey(text), { spoken, at: Date.now() });
+    }
     return {
       intent: local.intent,
       hops: local.hops,
@@ -87,11 +101,14 @@ export const runHelixTurn = createServerFn({ method: "POST" })
         snippet: r.doc.body.slice(0, 180),
       })),
       numbers: local.numbers,
-      spoken: syn.spoken,
+      spoken,
       fallbackSpoken: local.fallbackSpoken,
-      grounded: local.grounded,
-      ai: syn.ai,
-      model: syn.model,
+      grounded: local.grounded && checked.ok,
+      verified: checked.ok,
+      verifyLeaks: checked.leaks,
+      traceId: local.traceId,
+      ai: syn.ai && checked.ok,
+      model: checked.ok ? syn.model : "verified-fallback",
       totalMs: Date.now() - t0 + local.hops.reduce((s, h) => s + h.ms, 0),
     };
   });

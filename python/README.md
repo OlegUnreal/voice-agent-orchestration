@@ -11,5 +11,8 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/helix turn "What is BTC's current regime?"
 .venv/bin/helix eval
 .venv/bin/helix train
+.venv/bin/helix export
 .venv/bin/pytest
 ```
+
+Turns append `data/traces.jsonl`. Thumbs write SFT/DPO pairs. The verifier refuses speech that invents a number. Memory is SQLite with `source` and `observedAt`. Live JSONL/SQLite is gitignored.

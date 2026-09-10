@@ -3,11 +3,14 @@ import {
   Loader2,
   Mic,
   MicOff,
+  ThumbsDown,
+  ThumbsUp,
   Volume2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { runHelixTurn, speakHelix } from "@/lib/helix/chat";
+import { submitFeedback } from "@/lib/helix/engine";
 import { cn } from "@/lib/utils";
 import type { AgentHop, Citation, ToolCall } from "@/lib/helix/types";
 
@@ -17,6 +20,7 @@ const PROMPTS = [
   "Backtest SMA crossover on ETH",
   "Portfolio risk if BTC drops 12 percent",
   "Cite evidence for the SOL momentum call",
+  "Remember that isolated 1x and 1 USDT risk cap",
 ];
 
 type Turn = {
@@ -28,6 +32,10 @@ type Turn = {
   hops?: AgentHop[];
   citations?: Citation[];
   grounded?: boolean;
+  verified?: boolean;
+  traceId?: string;
+  query?: string;
+  feedback?: "up" | "down";
 };
 
 export function VoiceView() {
@@ -103,6 +111,9 @@ export function VoiceView() {
           hops: res.hops,
           citations: res.citations,
           grounded: res.grounded,
+          verified: res.verified,
+          traceId: res.traceId,
+          query: q,
         },
       ]);
     } catch (e) {
@@ -110,6 +121,20 @@ export function VoiceView() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function vote(index: number, verdict: "up" | "down") {
+    const turn = turns[index];
+    if (!turn?.traceId || turn.role !== "helix") return;
+    setTurns((t) => t.map((row, i) => (i === index ? { ...row, feedback: verdict } : row)));
+    await submitFeedback({
+      data: {
+        traceId: turn.traceId,
+        verdict,
+        spoken: turn.text,
+        query: turn.query ?? "",
+      },
+    });
   }
 
   async function speak(text: string) {
@@ -190,17 +215,40 @@ export function VoiceView() {
                 {t.intent && <Badge>{t.intent}</Badge>}
                 {t.model && <span className="font-mono normal-case">{t.model}</span>}
                 {t.grounded && <Badge tone="gain">grounded</Badge>}
+                {t.role === "helix" && t.verified === false && <Badge tone="loss">held</Badge>}
               </div>
               <p>{t.text.replace(/\*\*/g, "")}</p>
               {t.role === "helix" && (
-                <button
-                  type="button"
-                  className="mt-2 inline-flex items-center gap-1 text-xs text-muted hover:text-fg"
-                  onClick={() => void speak(t.text)}
-                >
-                  <Volume2 className="size-3.5" />
-                  Speak
-                </button>
+                <div className="mt-2 flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs text-muted hover:text-fg"
+                    onClick={() => void speak(t.text)}
+                  >
+                    <Volume2 className="size-3.5" />
+                    Speak
+                  </button>
+                  {t.traceId && (
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Good answer"
+                        className={cn("text-muted hover:text-gain", t.feedback === "up" && "text-gain")}
+                        onClick={() => void vote(i, "up")}
+                      >
+                        <ThumbsUp className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Bad answer"
+                        className={cn("text-muted hover:text-loss", t.feedback === "down" && "text-loss")}
+                        onClick={() => void vote(i, "down")}
+                      >
+                        <ThumbsDown className="size-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
             </article>
           ))}

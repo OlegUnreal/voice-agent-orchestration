@@ -17,7 +17,12 @@ def main(argv: list[str] | None = None) -> int:
     e = sub.add_parser("eval", help="Run EvalForge golden suite")
     e.add_argument("--kind", default="lora")
     sub.add_parser("train", help="Train LoRA / QLoRA adapters")
-    sub.add_parser("mcp", help="List live Project Hub / OK-Trader MCP tools")
+    sub.add_parser("mcp", help="List live MCP tools")
+    sub.add_parser("export", help="Dump SFT/DPO dataset counts")
+    mem = sub.add_parser("remember", help="Store a provenance fact")
+    mem.add_argument("text", nargs="+")
+    rec = sub.add_parser("recall", help="Recall facts")
+    rec.add_argument("text", nargs="*")
 
     args = parser.parse_args(argv)
     if args.cmd == "serve":
@@ -48,6 +53,28 @@ def main(argv: list[str] | None = None) -> int:
         from helix.oktrader.live import live_status
 
         print(json.dumps(live_status(), indent=2, default=str))
+        return 0
+    if args.cmd == "export":
+        from helix.ledger import export_dataset
+
+        print(json.dumps(export_dataset(), indent=2, default=str)[:4000])
+        return 0
+    if args.cmd == "remember":
+        from helix.memory import parse_remember, remember
+
+        text = " ".join(args.text)
+        parsed = parse_remember("remember " + text if not text.lower().startswith("remember") else text)
+        if not parsed:
+            parsed = (text[:40], text)
+        row = remember(*parsed, source="user")
+        print(json.dumps(row, indent=2))
+        return 0
+    if args.cmd == "recall":
+        from helix.memory import list_facts, recall
+
+        q = " ".join(args.text)
+        rows = recall(q, k=8) if q else list_facts(8)
+        print(json.dumps(rows, indent=2))
         return 0
     return 1
 

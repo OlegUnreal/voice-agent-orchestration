@@ -16,6 +16,7 @@ PROTOTYPES: list[tuple[Intent, str]] = [
     ("portfolio", "portfolio review book weights allocation ballast copilot"),
     ("eval", "eval metrics recall ndcg promotion gates golden regression"),
     ("training", "train lora qlora checkpoint dataset sft reranker registry"),
+    ("memory", "remember forget recall my mandate risk cap note fact"),
     ("general", "hello help what can you do helix voice agent mcp tools"),
 ]
 _VEC = [(intent, embed(text)) for intent, text in PROTOTYPES]
@@ -27,6 +28,7 @@ _RULES: list[tuple[Intent, re.Pattern[str]]] = [
     ("regime", re.compile(r"\b(regime|bull|bear|high-vol|high vol|klines|mark price)\b", re.I)),
     ("eval", re.compile(r"\b(promote|ndcg|recall@|golden|evalforge|eval)\b", re.I)),
     ("training", re.compile(r"\b(lora|qlora|checkpoint|train|sft|registry)\b", re.I)),
+    ("memory", re.compile(r"\b(remember|forget|recall what you know|what do you remember)\b", re.I)),
     ("portfolio", re.compile(r"\b(portfolio|book|weights|copilot review|position|balance|account|futures)\b", re.I)),
     ("research", re.compile(r"\b(cite|evidence|why|research|staking|on-chain|onchain)\b", re.I)),
 ]

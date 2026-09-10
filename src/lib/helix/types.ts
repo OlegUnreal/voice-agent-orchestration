@@ -12,6 +12,7 @@ export type Intent =
   | "portfolio"
   | "eval"
   | "training"
+  | "memory"
   | "general";
 
 export type AgentId =
@@ -137,6 +138,10 @@ export interface OrchestratorResult {
   numbers: Record<string, number | string>;
   fallbackSpoken: string;
   grounded: boolean;
+  verified?: boolean;
+  verifyLeaks?: string[];
+  traceId?: string;
+  memory?: { id: string; key: string; value: string; source: string }[];
 }
 
 export interface EvalCase {

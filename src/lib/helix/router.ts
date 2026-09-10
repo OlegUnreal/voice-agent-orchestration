@@ -10,6 +10,7 @@ const PROTOTYPES: { intent: Intent; text: string }[] = [
   { intent: "portfolio", text: "portfolio review book weights allocation ballast copilot" },
   { intent: "eval", text: "eval metrics recall ndcg promotion gates golden regression" },
   { intent: "training", text: "train lora qlora checkpoint dataset sft reranker registry" },
+  { intent: "memory", text: "remember forget recall my mandate risk cap note fact" },
   { intent: "general", text: "hello help what can you do helix voice agent mcp tools" },
 ];
 
@@ -23,6 +24,7 @@ export function classifyIntent(query: string): Intent {
   if (/\b(regime|bull|bear|high-vol|high vol)\b/.test(q)) return "regime";
   if (/\b(promote|ndcg|recall@|golden|evalforge|eval)\b/.test(q)) return "eval";
   if (/\b(lora|qlora|checkpoint|train|sft|registry)\b/.test(q)) return "training";
+  if (/\b(remember|forget|what do you remember)\b/.test(q)) return "memory";
   if (/\b(portfolio|book|weights|copilot review)\b/.test(q)) return "portfolio";
   if (/\b(cite|evidence|why|research|staking|on-chain|onchain)\b/.test(q)) return "research";
   const qv = embed(query);
