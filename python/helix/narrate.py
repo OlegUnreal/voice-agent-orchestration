@@ -51,7 +51,7 @@ def _stream_chat(url: str, headers: dict[str, str], body: dict[str, Any]) -> tup
     t0 = time.perf_counter()
     ttft = None
     parts: list[str] = []
-    with httpx.Client(timeout=float(os.environ.get("HELIX_NARRATE_TIMEOUT", "20"))) as client:
+    with httpx.Client(timeout=float(os.environ.get("HELIX_NARRATE_TIMEOUT", "8"))) as client:
         with client.stream("POST", url, headers=headers, json={**body, "stream": True}) as resp:
             if resp.status_code >= 400:
                 raise RuntimeError(f"narrate {resp.status_code}")
@@ -81,7 +81,7 @@ def _stream_chat(url: str, headers: dict[str, str], body: dict[str, Any]) -> tup
 
 def _post_chat(url: str, headers: dict[str, str], body: dict[str, Any]) -> tuple[str, float, bool]:
     t0 = time.perf_counter()
-    with httpx.Client(timeout=float(os.environ.get("HELIX_NARRATE_TIMEOUT", "20"))) as client:
+    with httpx.Client(timeout=float(os.environ.get("HELIX_NARRATE_TIMEOUT", "8"))) as client:
         resp = client.post(url, headers=headers, json=body)
         resp.raise_for_status()
         raw = resp.json()["choices"][0]["message"]["content"]
@@ -119,7 +119,11 @@ def narrate(query: str, payload: dict[str, Any], fallback: str, trace_id: str | 
     ttft = 0.0
     streamed = False
     vllm = (os.environ.get("HELIX_VLLM_URL") or "").rstrip("/")
-    xai = os.environ.get("XAI_API_KEY") or os.environ.get("HELIX_XAI_API_KEY")
+    # Ambient XAI_API_KEY is for the voice UI. Engines only call xAI when explicitly opted in,
+    # otherwise every /v1/narrate hangs the turn if the vendor is slow or blocked.
+    xai = os.environ.get("HELIX_XAI_API_KEY") or (
+        os.environ.get("XAI_API_KEY") if os.environ.get("HELIX_NARRATE_XAI", "").lower() in {"1", "true", "yes"} else None
+    )
     try:
         if vllm:
             raw, ttft, streamed, model = _complete(

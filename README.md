@@ -243,7 +243,7 @@ pip install -e ".[agents]"   # LangGraph
 pip install -e ".[train]"    # torch / transformers / peft / trl
 ```
 
-Env flags: `HELIX_EMBEDDINGS=st`, `HELIX_CROSS_ENCODER=1`, `HELIX_VLLM_URL=http://127.0.0.1:8000/v1`, `DATABASE_URL=postgresql://helix:helix@127.0.0.1:5432/helix`.
+Env flags: `HELIX_EMBEDDINGS=st`, `HELIX_CROSS_ENCODER=1`, `HELIX_VLLM_URL=http://127.0.0.1:8000/v1`, `DATABASE_URL=postgresql://helix:helix@127.0.0.1:5432/helix`. `XAI_API_KEY` stays on the voice UI. Engines call Grok only if `HELIX_XAI_API_KEY` or `HELIX_NARRATE_XAI=1` — otherwise `/v1/narrate` would block every turn on a slow vendor.
 
 LangGraph is **HITL persistence**, not a swarm. `helix graph "Place a market buy…"` → `awaiting_approval`. `POST /v1/graph/resume` never calls a write tool.
 

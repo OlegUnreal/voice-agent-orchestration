@@ -5,6 +5,7 @@ from helix.narrate import narrate
 from helix.serving import log_serving, serving_report
 from helix.snapshot import snapshot
 from helix.experiments import list_experiments, log_experiment
+import time
 
 
 def test_serving_report():
@@ -45,9 +46,12 @@ def test_graph_blocks_writes_for_hitl():
 
 def test_narrate_falls_back_without_keys(monkeypatch):
     monkeypatch.delenv("HELIX_VLLM_URL", raising=False)
-    monkeypatch.delenv("XAI_API_KEY", raising=False)
     monkeypatch.delenv("HELIX_XAI_API_KEY", raising=False)
+    monkeypatch.delenv("HELIX_NARRATE_XAI", raising=False)
+    monkeypatch.setenv("XAI_API_KEY", "should-not-be-used")
+    t0 = time.perf_counter()
     out = narrate("regime?", {"numbers": {"price": 1.0}, "ticker": "BTC"}, "BTC last 1.0 from tools.")
+    assert time.perf_counter() - t0 < 1.0
     assert out["route"] == "local-tools"
     assert "1.0" in out["spoken"]
 
