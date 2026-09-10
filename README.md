@@ -1,22 +1,43 @@
 # Helix — Voice agent orchestration
 
-Voice-first financial copilot. **Python is the source of truth** for quant, RAG, EvalForge and TrainingOps (FastAPI, Pydantic, pandas, NumPy, scikit-learn). TypeScript is the voice/UI shell. Grok only speaks after tools return numbers.
+Voice-first copilot over **your** tools. Python owns the numbers (FastAPI, Pydantic, pandas, NumPy, scikit-learn). The LLM only speaks after tools return. Clone it, point `HELIX_MCP_URL` at your MCP server, talk.
 
 [![CI](https://github.com/OlegUnreal/voice-agent-orchestration/actions/workflows/ci.yml/badge.svg)](https://github.com/OlegUnreal/voice-agent-orchestration/actions/workflows/ci.yml)
 
-> **LLM does not pick tools and does not invent VaR, Sharpe, or prices.** The control loop is FastAPI + Pydantic. Grok sees JSON *after* the engines run.
+> **The model does not pick tools and does not invent prices, VaR, or positions.** That is the whole product.
 
-## Python engines (résumé stack)
+## Why this exists (vs ChatGPT / Grok chat)
 
-| Résumé tool | In `python/helix/` |
+ChatGPT and Grok are general language models. They are good at talking. They are bad at being a broker:
+
+- they will **invent** a last price or a VaR if the tool is slow or missing
+- they will **call a write tool** if the prompt is sloppy
+- your API keys, fills and positions should not live in a chat vendor
+- you cannot see *which* tool produced a number
+
+Helix is the opposite contract:
+
+1. Supervisor routes intent with rules + embeddings — not the LLM.
+2. Governed tools run (local engines **or** your MCP).
+3. Write tools (`order`, `cancel`, `kill-switch`, `execute`) are listed and **never auto-run**.
+4. Grok (optional) receives JSON *after* that and may only narrate it.
+5. If MCP is down and `HELIX_ALLOW_SIMULATOR=false`, Helix **refuses** to speak a price.
+
+Use this repo if you have (or want) a personal/market MCP and need a voice layer that cannot trade by accident. If you only want a chatbot, use ChatGPT.
+
+Personal OK-Trader / Tailscale wiring is **not** in this public tree. It lives in a private overlay repo.
+
+## Python engines
+
+| Piece | In `python/helix/` |
 |---|---|
 | FastAPI + Pydantic | [`gateway/app.py`](python/helix/gateway/app.py) — structured routes, TTL cache, JSON-RPC `/mcp` |
-| pandas / NumPy | [`market.py`](python/helix/market.py) — GBM tape, regimes, z-score anomalies, SMA backtest, HS/parametric/MC VaR |
+| pandas / NumPy | [`market.py`](python/helix/market.py) — demo tape, regimes, anomalies, SMA backtest, VaR |
 | RAG + embeddings + rerank | [`embeddings.py`](python/helix/embeddings.py), [`rag.py`](python/helix/rag.py), [`reranker.py`](python/helix/reranker.py) |
-| scikit-learn | LogisticRegression sanity-check next to NumPy SGD LoRA r8 / QLoRA r4 |
-| EvalForge | [`evals.py`](python/helix/evals.py) — golden set, Recall@K, MRR, nDCG, groundedness, dataset version hash |
+| scikit-learn | LogisticRegression next to NumPy SGD LoRA-style rerank probe |
+| EvalForge | [`evals.py`](python/helix/evals.py) — golden set, Recall@K, MRR, nDCG, groundedness |
 | TrainingOps | [`training.py`](python/helix/training.py) — qrels → adapters → staging/shadow/canary/production |
-| MCP tools | [`mcp.py`](python/helix/mcp.py) + `POST /mcp` (`tools/list`, `tools/call`; `propose_rebalance` → 403) |
+| MCP client | [`oktrader/mcp_client.py`](python/helix/oktrader/mcp_client.py) — Streamable HTTP `initialize` → `tools/list` → `tools/call` |
 
 ```bash
 cd python
@@ -26,22 +47,29 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/helix turn "What is BTC's current regime?"
 ```
 
-Voice, EvalForge and TrainingOps in the UI call this gateway (`HELIX_ENGINE_URL`). If it is down, the TypeScript engines are a fallback so the demo still runs.
+Voice UI talks to this gateway (`HELIX_ENGINE_URL`). If it is down, TypeScript engines keep the demo alive.
 
-## Live OK-Trader (Project Hub MCP)
-
-Helix does **not** call `http://ok-trader:8080/api/v1` — that REST stays on the private Docker network. Live trading context comes from the same Streamable HTTP MCP you already expose on Tailscale.
+## Use it on your machine
 
 ```bash
-export OK_TRADER_MCP_URL='https://hidden-horny-smile-vps.tail59dec0.ts.net/mcp'
-export HELIX_ALLOW_SIMULATOR=false   # do not invent prices if Hub is down
+# 1) optional: your MCP (any Streamable HTTP 2025-06-18 server)
+export HELIX_MCP_URL='https://your-host/mcp'
+export HELIX_ALLOW_SIMULATOR=false   # refuse fake prices if MCP is down
+
 .venv/bin/helix mcp                  # initialize + tools/list
-.venv/bin/helix turn "BTC mark price and open positions"
+.venv/bin/helix turn "mark price and open positions"
+.venv/bin/helix serve                # :8090
 ```
 
-Session flow matches your Hub: `initialize` → `Mcp-Session-Id` → `tools/list` / `tools/call`. Write tools (order, cancel, kill-switch, execute) are discovered and **never auto-run**. Read tools (price, klines, positions, risk preflight, portfolio context) are picked by intent.
+Copy [`python/mcp.env.example`](python/mcp.env.example). Without `HELIX_MCP_URL`, Helix runs the bundled demo tape so you can try the voice UI.
 
-This preview machine is not on your tailnet, so live calls will fail here until Helix runs next to Hub (`http://project-hub-mcp:8080/mcp`) or on a Tailscale node. Copy [`python/ok-trader.env.example`](python/ok-trader.env.example).
+Write tools are discovered and **never auto-run**. Read tools (price, klines, positions, preflight, project context) are picked by intent.
+
+```bash
+# 2) voice UI
+npm install && npm run dev
+# optional: XAI_API_KEY for Grok narration; without it, fallbackSpoken is used
+```
 
 
 ## Architecture

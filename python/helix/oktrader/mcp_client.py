@@ -15,8 +15,8 @@ from urllib.parse import urlparse
 
 import httpx
 
-PROTOCOL = os.environ.get("OK_TRADER_MCP_PROTOCOL", "2025-06-18")
-DEFAULT_TIMEOUT = float(os.environ.get("OK_TRADER_MCP_TIMEOUT", "8"))
+PROTOCOL = os.environ.get("HELIX_MCP_PROTOCOL") or os.environ.get("OK_TRADER_MCP_PROTOCOL", "2025-06-18")
+DEFAULT_TIMEOUT = float(os.environ.get("HELIX_MCP_TIMEOUT") or os.environ.get("OK_TRADER_MCP_TIMEOUT", "8"))
 
 WRITE_HINTS = (
     "order",
@@ -157,7 +157,7 @@ _client_lock = threading.Lock()
 
 
 def configured_url() -> str | None:
-    url = (os.environ.get("OK_TRADER_MCP_URL") or "").strip()
+    url = (os.environ.get("HELIX_MCP_URL") or os.environ.get("OK_TRADER_MCP_URL") or "").strip()
     return url or None
 
 
@@ -171,5 +171,8 @@ def get_client() -> McpClient | None:
         if _client is None or _client.url != url.rstrip("/"):
             if _client is not None:
                 _client.close()
-            _client = McpClient(url, token=os.environ.get("OK_TRADER_MCP_TOKEN") or None)
+            _client = McpClient(
+                url,
+                token=os.environ.get("HELIX_MCP_TOKEN") or os.environ.get("OK_TRADER_MCP_TOKEN") or None,
+            )
         return _client
