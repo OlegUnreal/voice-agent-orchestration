@@ -28,6 +28,7 @@ from helix.models import (
     TrainRequest,
     TurnRequest,
 )
+from helix.oktrader.live import live_status
 from helix.orchestrator import grok_tool_payload, run_orchestrator
 from helix.rag import lexical_retrieve, retrieve
 from helix.traces import SEED_TRACES
@@ -71,7 +72,18 @@ def route_model(has_tools: bool, cache_hit: bool) -> RouteDecision:
 @app.get("/")
 @app.get("/health")
 def health() -> dict[str, Any]:
-    return {"ok": True, "service": "helix-engines", "dataset": dataset_version()}
+    mcp = live_status()
+    return {
+        "ok": True,
+        "service": "helix-engines",
+        "dataset": dataset_version(),
+        "mcp": {"configured": mcp.get("configured"), "ok": mcp.get("ok"), "count": mcp.get("count", 0)},
+    }
+
+
+@app.get("/v1/live/status")
+def live() -> dict[str, Any]:
+    return live_status()
 
 
 @app.post("/v1/turn")

@@ -23,7 +23,7 @@ from helix.models import (
 )
 from helix.rag import retrieve
 from helix.router import classify_intent
-from helix.training import default_checkpoints
+from helix.oktrader.live import allow_simulator, json_preview, try_live_turn
 
 INTENT_AGENT: dict[Intent, AgentId] = {
     "regime": "quant",
@@ -89,6 +89,30 @@ def run_orchestrator(query: str) -> OrchestratorResult:
     need_eval = intent == "eval"
     need_ckpt = intent in {"training", "eval"}
 
+    live = try_live_turn(query, intent, ticker)
+    if live and live.ok and live.tools:
+        tools.extend(live.tools)
+        numbers.update(live.numbers)
+        compact = {k: json_preview(v)[:400] for k, v in live.payload.items()}
+        numbers["livePayload"] = compact
+        hops.append(
+            AgentHop(
+                agent="copilot",
+                label="ok-trader mcp · " + " · ".join(t.name for t in live.tools),
+                ms=float(live.numbers.get("liveMs") or 0),
+            )
+        )
+        need_snapshot = need_regime = need_anom = need_bt = need_risk = False
+        if intent != "research":
+            need_rag = False
+    elif live and not live.ok:
+        numbers["liveError"] = live.error
+        if not allow_simulator():
+            need_snapshot = need_regime = need_anom = need_bt = need_risk = False
+            numbers["simulator"] = False
+    elif live and live.ok:
+        numbers.update(live.numbers)
+
     if need_snapshot:
         snapshot_res, call = _timed("get_market_snapshot", {"ticker": ticker}, lambda: snapshot(ticker))
         tools.append(call)
@@ -135,7 +159,7 @@ def run_orchestrator(query: str) -> OrchestratorResult:
         for d in (retrieved or [])[:4]
     ]
     spoken = _speak(intent, ticker, snapshot_res, anomalies, backtest, risk, retrieved, numbers)
-    grounded = bool(citations) or bool(snapshot_res or backtest or risk)
+    grounded = bool(citations) or bool(snapshot_res or backtest or risk) or bool(numbers.get("live"))
     return OrchestratorResult(
         intent=intent,
         hops=hops,
@@ -188,10 +212,28 @@ def grok_tool_payload(result: OrchestratorResult) -> dict:
         ),
         "gates": gate_check(run_eval_suite("lora")),
         "datasetVersion": result.datasetVersion,
+        "live": bool((result.numbers or {}).get("live")),
     }
 
 
 def _speak(intent, ticker, snap, anomalies, backtest, risk, retrieved, numbers) -> str:
+    if numbers.get("liveError") and not numbers.get("live"):
+        return (
+            "Project Hub MCP is unreachable, so I will not invent a live price. "
+            f"{numbers.get('liveError')}. "
+            "Run Helix on the Tailscale tailnet or next to the Hub container."
+        )
+    if numbers.get("live") and numbers.get("livePayload"):
+        parts = [f"{k}: {v}" for k, v in list(numbers["livePayload"].items())[:3]]
+        joined = " ".join(parts)[:420]
+        return (
+            f"Live OK-Trader via Project Hub MCP ({int(numbers.get('liveToolCount') or 0)} tools). "
+            f"{joined} "
+            "Write tools (orders, cancel, kill-switch) are listed and require approval — I did not call them."
+        )
+    if numbers.get("live") and numbers.get("liveToolsAvailable"):
+        names = ", ".join(str(n) for n in numbers["liveToolsAvailable"][:8])
+        return f"MCP is up. Available tools: {names}. Ask for a price, position, or risk preflight."
     if intent == "regime" and snap:
         return (
             f"{ticker} is in a {snap.regime.replace('-', ' ')} regime. Last {snap.price:.2f}, "

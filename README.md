@@ -28,6 +28,22 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 
 Voice, EvalForge and TrainingOps in the UI call this gateway (`HELIX_ENGINE_URL`). If it is down, the TypeScript engines are a fallback so the demo still runs.
 
+## Live OK-Trader (Project Hub MCP)
+
+Helix does **not** call `http://ok-trader:8080/api/v1` — that REST stays on the private Docker network. Live trading context comes from the same Streamable HTTP MCP you already expose on Tailscale.
+
+```bash
+export OK_TRADER_MCP_URL='https://hidden-horny-smile-vps.tail59dec0.ts.net/mcp'
+export HELIX_ALLOW_SIMULATOR=false   # do not invent prices if Hub is down
+.venv/bin/helix mcp                  # initialize + tools/list
+.venv/bin/helix turn "BTC mark price and open positions"
+```
+
+Session flow matches your Hub: `initialize` → `Mcp-Session-Id` → `tools/list` / `tools/call`. Write tools (order, cancel, kill-switch, execute) are discovered and **never auto-run**. Read tools (price, klines, positions, risk preflight, portfolio context) are picked by intent.
+
+This preview machine is not on your tailnet, so live calls will fail here until Helix runs next to Hub (`http://project-hub-mcp:8080/mcp`) or on a Tailscale node. Copy [`python/ok-trader.env.example`](python/ok-trader.env.example).
+
+
 ## Architecture
 
 

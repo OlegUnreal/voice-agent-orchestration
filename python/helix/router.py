@@ -22,12 +22,12 @@ _VEC = [(intent, embed(text)) for intent, text in PROTOTYPES]
 
 _RULES: list[tuple[Intent, re.Pattern[str]]] = [
     ("backtest", re.compile(r"\b(backtest|sharpe|sma crossover|cagr)\b", re.I)),
-    ("risk", re.compile(r"\b(var|cvar|shock|drop 12|risk if|scenario)\b", re.I)),
-    ("anomaly", re.compile(r"\b(anomal|inflow|dump|funding|z-score|zscore|stress window)\b", re.I)),
-    ("regime", re.compile(r"\b(regime|bull|bear|high-vol|high vol)\b", re.I)),
+    ("risk", re.compile(r"\b(var|cvar|shock|drop 12|risk if|scenario|preflight|kill.?switch)\b", re.I)),
+    ("anomaly", re.compile(r"\b(anomal|inflow|dump|funding|z-score|zscore|stress window|open interest)\b", re.I)),
+    ("regime", re.compile(r"\b(regime|bull|bear|high-vol|high vol|klines|mark price)\b", re.I)),
     ("eval", re.compile(r"\b(promote|ndcg|recall@|golden|evalforge|eval)\b", re.I)),
     ("training", re.compile(r"\b(lora|qlora|checkpoint|train|sft|registry)\b", re.I)),
-    ("portfolio", re.compile(r"\b(portfolio|book|weights|copilot review)\b", re.I)),
+    ("portfolio", re.compile(r"\b(portfolio|book|weights|copilot review|position|balance|account|futures)\b", re.I)),
     ("research", re.compile(r"\b(cite|evidence|why|research|staking|on-chain|onchain)\b", re.I)),
 ]
 

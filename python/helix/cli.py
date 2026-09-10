@@ -17,6 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     e = sub.add_parser("eval", help="Run EvalForge golden suite")
     e.add_argument("--kind", default="lora")
     sub.add_parser("train", help="Train LoRA / QLoRA adapters")
+    sub.add_parser("mcp", help="List live Project Hub / OK-Trader MCP tools")
 
     args = parser.parse_args(argv)
     if args.cmd == "serve":
@@ -42,6 +43,11 @@ def main(argv: list[str] | None = None) -> int:
         from helix.training import train_adapters
 
         print(json.dumps(train_adapters(), indent=2, default=str))
+        return 0
+    if args.cmd == "mcp":
+        from helix.oktrader.live import live_status
+
+        print(json.dumps(live_status(), indent=2, default=str))
         return 0
     return 1
 
