@@ -19,6 +19,8 @@ from helix.market import (
     snapshot,
 )
 from helix.ledger import export_dataset, list_traces, log_feedback, log_verify_fail
+from helix.redteam import run_redteam
+from helix.teacher import log_teacher
 from helix.memory import forget, list_facts, remember, recall
 from helix.mcp import tools_as_json
 from helix.models import (
@@ -65,6 +67,7 @@ class VerifyRequest(BaseModel):
     payload: dict[str, Any] = {}
     traceId: str | None = None
     query: str = ""
+    model: str = "local-tools"
 
 
 class FeedbackRequest(BaseModel):
@@ -169,6 +172,11 @@ def evals(kind: RetrieverKind = "lora") -> dict[str, Any]:
     }
 
 
+@app.get("/v1/evals/redteam")
+def evals_redteam() -> dict[str, Any]:
+    return run_redteam()
+
+
 @app.post("/v1/training/train")
 def training_train(req: TrainRequest) -> dict[str, Any]:
     global _ckpts
@@ -204,6 +212,14 @@ def verify(req: VerifyRequest) -> dict[str, Any]:
                 "leaks": checked["leaks"],
             }
         )
+    log_teacher(
+        req.traceId,
+        req.query,
+        req.spoken,
+        checked["spoken"] or req.fallbackSpoken,
+        req.model,
+        checked["leaks"],
+    )
     return checked
 
 

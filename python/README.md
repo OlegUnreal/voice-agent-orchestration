@@ -12,7 +12,8 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/helix eval
 .venv/bin/helix train
 .venv/bin/helix export
+.venv/bin/helix redteam
 .venv/bin/pytest
 ```
 
-Turns append `data/traces.jsonl`. Thumbs write SFT/DPO pairs. The verifier refuses speech that invents a number. Memory is SQLite with `source` and `observedAt`. Live JSONL/SQLite is gitignored.
+Turns append `data/traces.jsonl`. Thumbs-up writes SFT; thumbs-down plus a rewrite writes DPO. Grok drafts that fail the verifier become distill pairs. Secrets are scrubbed before disk. `helix redteam` is the jailbreak golden.

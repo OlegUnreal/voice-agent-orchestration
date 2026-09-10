@@ -74,6 +74,7 @@ export const runHelixTurn = createServerFn({ method: "POST" })
       payload,
       traceId: local.traceId,
       query: text,
+      model: syn.model,
     });
     const spoken = checked.spoken || local.fallbackSpoken;
     if (syn.ai && checked.ok) {
@@ -102,6 +103,7 @@ export const runHelixTurn = createServerFn({ method: "POST" })
       })),
       numbers: local.numbers,
       spoken,
+      draftSpoken: syn.spoken,
       fallbackSpoken: local.fallbackSpoken,
       grounded: local.grounded && checked.ok,
       verified: checked.ok,

@@ -6,6 +6,7 @@ import time
 import uuid
 from typing import Any
 
+from helix.sanitize import scrub_obj
 from helix.store import append_jsonl, read_jsonl
 
 TRACES = "traces.jsonl"
@@ -20,7 +21,7 @@ def new_id(prefix: str = "tr") -> str:
 def log_turn(row: dict[str, Any]) -> str:
     tid = row.get("id") or new_id()
     row = {**row, "id": tid, "ts": row.get("ts") or int(time.time() * 1000)}
-    append_jsonl(TRACES, row)
+    append_jsonl(TRACES, scrub_obj(row))
     return tid
 
 
@@ -36,42 +37,48 @@ def log_feedback(
     correction: str | None = None,
     tools: list[str] | None = None,
 ) -> dict[str, Any]:
-    rec = {
-        "id": new_id("fb"),
-        "ts": int(time.time() * 1000),
-        "traceId": trace_id,
-        "verdict": verdict,
-        "query": query,
-        "spoken": spoken,
-        "correction": (correction or "").strip() or None,
-        "tools": tools or [],
-    }
+    rec = scrub_obj(
+        {
+            "id": new_id("fb"),
+            "ts": int(time.time() * 1000),
+            "traceId": trace_id,
+            "verdict": verdict,
+            "query": query,
+            "spoken": spoken,
+            "correction": (correction or "").strip() or None,
+            "tools": tools or [],
+        }
+    )
     append_jsonl(PREFS, rec)
     if verdict == "down" and rec["correction"]:
         append_jsonl(
             PREFS,
-            {
-                "id": new_id("dpo"),
-                "ts": rec["ts"],
-                "traceId": trace_id,
-                "kind": "dpo",
-                "prompt": query,
-                "rejected": spoken,
-                "chosen": rec["correction"],
-            },
+            scrub_obj(
+                {
+                    "id": new_id("dpo"),
+                    "ts": rec["ts"],
+                    "traceId": trace_id,
+                    "kind": "dpo",
+                    "prompt": query,
+                    "rejected": spoken,
+                    "chosen": rec["correction"],
+                }
+            ),
         )
     elif verdict == "up":
         append_jsonl(
             PREFS,
-            {
-                "id": new_id("sft"),
-                "ts": rec["ts"],
-                "traceId": trace_id,
-                "kind": "sft",
-                "prompt": query,
-                "chosen": spoken,
-                "rejected": None,
-            },
+            scrub_obj(
+                {
+                    "id": new_id("sft"),
+                    "ts": rec["ts"],
+                    "traceId": trace_id,
+                    "kind": "sft",
+                    "prompt": query,
+                    "chosen": spoken,
+                    "rejected": None,
+                }
+            ),
         )
     return rec
 
@@ -87,12 +94,17 @@ def export_dataset() -> dict[str, Any]:
     fails = read_jsonl(FAILS)
     sft = [p for p in prefs if p.get("kind") == "sft"]
     dpo = [p for p in prefs if p.get("kind") == "dpo"]
+    distill = [p for p in prefs if p.get("kind") == "distill"]
+    teachers = read_jsonl("teachers.jsonl")
     return {
         "traces": len(traces),
         "preferences": len(prefs),
         "verifyFails": len(fails),
         "sftPairs": len(sft),
         "dpoPairs": len(dpo),
+        "distillPairs": len(distill),
+        "teachers": len(teachers),
         "sft": sft[-50:],
         "dpo": dpo[-50:],
+        "distill": distill[-50:],
     }

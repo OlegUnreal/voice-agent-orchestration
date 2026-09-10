@@ -30,14 +30,18 @@ Personal live wiring (Tailscale, OK-Trader) is **not** in this public tree.
 | Skill | Python | What it writes |
 |---|---|---|
 | Verifier | [`verifier.py`](python/helix/verifier.py) | `verify_fails.jsonl` when speech leaks a number |
+| Teacher log | [`teacher.py`](python/helix/teacher.py) | draft vs final → `distill` pairs |
 | Trace ledger | [`ledger.py`](python/helix/ledger.py) | `traces.jsonl` every turn |
-| Feedback | `POST /v1/feedback` | `preferences.jsonl` — SFT on thumbs-up, DPO on correction |
+| Feedback | thumbs + **correction box** | `preferences.jsonl` — SFT on ↑, DPO on ↓ + rewrite |
+| Sanitizer | [`sanitize.py`](python/helix/sanitize.py) | keys / JWT / email stripped before JSONL |
 | Memory | [`memory.py`](python/helix/memory.py) | SQLite facts with provenance |
+| Red team | [`redteam.py`](python/helix/redteam.py) | 12 jailbreaks: no invented numbers, no write tools |
 
 ```bash
 .venv/bin/helix turn "Remember that isolated 1x and 1 USDT risk cap"
 .venv/bin/helix recall "risk cap"
-.venv/bin/helix export          # SFT / DPO counts
+.venv/bin/helix export          # SFT / DPO / distill counts
+.venv/bin/helix redteam
 ```
 
 Thumbs on each Helix reply in the voice UI. Data stays in `python/data/` (gitignored). Train later; collect now.

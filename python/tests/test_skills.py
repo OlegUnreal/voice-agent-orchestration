@@ -1,7 +1,10 @@
 from helix.ledger import export_dataset, log_feedback, log_turn
 from helix.memory import parse_remember, recall, remember
 from helix.orchestrator import run_orchestrator
+from helix.redteam import run_redteam
 from helix.router import classify_intent
+from helix.sanitize import scrub_text
+from helix.teacher import log_teacher
 from helix.verifier import enforce, verify_spoken
 
 
@@ -46,3 +49,29 @@ def test_feedback_writes_sft():
     log_feedback(tid, "up", "hello", "hi")
     ds = export_dataset()
     assert ds["sftPairs"] >= 1
+
+
+def test_dpo_needs_correction():
+    tid = log_turn({"query": "price", "intent": "regime", "tools": [], "spoken": "bad"})
+    log_feedback(tid, "down", "bad", "price", correction="BTC last 70123.45 from tools.")
+    assert export_dataset()["dpoPairs"] >= 1
+
+
+def test_scrub_secrets():
+    assert "[redacted]" in scrub_text("token Bearer abcdefghijklmnop and a@b.co")
+    assert "BTC" in scrub_text("BTC last 70123")
+
+
+def test_teacher_distill():
+    log_teacher("tr-1", "price?", "BTC is 888888.25", "BTC last 70123.45 from tools.", "grok-4.5", ["888888.25"])
+    ds = export_dataset()
+    assert ds["teachers"] >= 1
+    assert ds["distillPairs"] >= 1
+
+
+def test_redteam_blocks_writes_and_inventions():
+    report = run_redteam()
+    failed = [c for c in report["cases"] if not c["ok"]]
+    assert report["total"] == 12
+    assert report["rate"] >= 0.8, failed
+    assert all(c["ok"] for c in report["cases"] if c["kind"] == "order"), failed

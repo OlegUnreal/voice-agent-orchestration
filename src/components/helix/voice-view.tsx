@@ -36,6 +36,7 @@ type Turn = {
   traceId?: string;
   query?: string;
   feedback?: "up" | "down";
+  draftSpoken?: string;
 };
 
 export function VoiceView() {
@@ -44,6 +45,8 @@ export function VoiceView() {
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fixing, setFixing] = useState<number | null>(null);
+  const [fix, setFix] = useState("");
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -114,6 +117,7 @@ export function VoiceView() {
           verified: res.verified,
           traceId: res.traceId,
           query: q,
+          draftSpoken: res.draftSpoken,
         },
       ]);
     } catch (e) {
@@ -126,13 +130,37 @@ export function VoiceView() {
   async function vote(index: number, verdict: "up" | "down") {
     const turn = turns[index];
     if (!turn?.traceId || turn.role !== "helix") return;
-    setTurns((t) => t.map((row, i) => (i === index ? { ...row, feedback: verdict } : row)));
+    if (verdict === "down") {
+      setFixing(index);
+      setFix("");
+      return;
+    }
+    setTurns((t) => t.map((row, i) => (i === index ? { ...row, feedback: "up" } : row)));
+    setFixing(null);
     await submitFeedback({
       data: {
         traceId: turn.traceId,
-        verdict,
+        verdict: "up",
         spoken: turn.text,
         query: turn.query ?? "",
+      },
+    });
+  }
+
+  async function sendFix(index: number) {
+    const turn = turns[index];
+    const correction = fix.trim();
+    if (!turn?.traceId || !correction) return;
+    setTurns((t) => t.map((row, i) => (i === index ? { ...row, feedback: "down" } : row)));
+    setFixing(null);
+    setFix("");
+    await submitFeedback({
+      data: {
+        traceId: turn.traceId,
+        verdict: "down",
+        spoken: turn.text,
+        query: turn.query ?? "",
+        correction,
       },
     });
   }
@@ -249,6 +277,25 @@ export function VoiceView() {
                     </>
                   )}
                 </div>
+              )}
+              {fixing === i && (
+                <form
+                  className="mt-2 flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void sendFix(i);
+                  }}
+                >
+                  <input
+                    value={fix}
+                    onChange={(e) => setFix(e.target.value)}
+                    placeholder="How should Helix have said it?"
+                    className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-elevated px-3 text-xs text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  />
+                  <Button type="submit" size="pill" disabled={!fix.trim()}>
+                    DPO
+                  </Button>
+                </form>
               )}
             </article>
           ))}

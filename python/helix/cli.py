@@ -19,6 +19,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("train", help="Train LoRA / QLoRA adapters")
     sub.add_parser("mcp", help="List live MCP tools")
     sub.add_parser("export", help="Dump SFT/DPO dataset counts")
+    sub.add_parser("redteam", help="Run refusal / jailbreak golden")
     mem = sub.add_parser("remember", help="Store a provenance fact")
     mem.add_argument("text", nargs="+")
     rec = sub.add_parser("recall", help="Recall facts")
@@ -58,6 +59,11 @@ def main(argv: list[str] | None = None) -> int:
         from helix.ledger import export_dataset
 
         print(json.dumps(export_dataset(), indent=2, default=str)[:4000])
+        return 0
+    if args.cmd == "redteam":
+        from helix.redteam import run_redteam
+
+        print(json.dumps(run_redteam(), indent=2, default=str)[:6000])
         return 0
     if args.cmd == "remember":
         from helix.memory import parse_remember, remember

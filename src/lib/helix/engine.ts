@@ -95,6 +95,7 @@ export async function pythonVerify(input: {
   payload: unknown;
   traceId?: string;
   query: string;
+  model?: string;
 }): Promise<{ ok: boolean; spoken: string; leaks: string[] }> {
   try {
     return (await engineFetch("/v1/verify", {

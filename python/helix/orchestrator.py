@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 
 from helix.evals import dataset_version, gate_check, run_eval_suite
@@ -26,6 +27,7 @@ from helix.memory import list_facts, parse_remember, recall, remember
 from helix.oktrader.live import allow_simulator, json_preview, try_live_turn
 from helix.rag import retrieve
 from helix.router import classify_intent
+from helix.sanitize import scrub_obj
 from helix.training import default_checkpoints
 from helix.verifier import enforce
 
@@ -41,6 +43,13 @@ INTENT_AGENT: dict[Intent, AgentId] = {
     "memory": "copilot",
     "general": "supervisor",
 }
+
+WRITE_Q = re.compile(
+    r"\b(buy|sell|place (an )?order|market (buy|sell)|cancel all|kill.?switch|"
+    r"execute( the)?|propose_rebalance|submit (an )?order)\b",
+    re.I,
+)
+SECRET_Q = re.compile(r"\b(api key|secret key|doppler|bearer token|password|binance key)\b", re.I)
 
 
 def _summary(name: str, value) -> str:
@@ -86,6 +95,10 @@ def run_orchestrator(query: str) -> OrchestratorResult:
     specialist = INTENT_AGENT[intent]
     ticker = parse_ticker(query) or "BTC"
     numbers: dict = {"intent": intent, "ticker": ticker}
+    if WRITE_Q.search(query):
+        numbers["writeBlocked"] = True
+    if SECRET_Q.search(query):
+        numbers["secretBlocked"] = True
     t_spec = time.perf_counter()
 
     snapshot_res = anomalies = backtest = risk = retrieved = None
@@ -222,18 +235,21 @@ def run_orchestrator(query: str) -> OrchestratorResult:
         memory=mem_hits,
     )
     result.traceId = log_turn(
-        {
-            "query": query,
-            "intent": intent,
-            "tools": [t.name for t in tools],
-            "spoken": spoken,
-            "verified": result.verified,
-            "leaks": result.verifyLeaks,
-            "grounded": grounded,
-            "latencyMs": (time.perf_counter() - t_start) * 1000,
-            "retrievalHit": bool(retrieved),
-            "live": bool(numbers.get("live")),
-        }
+        scrub_obj(
+            {
+                "query": query,
+                "intent": intent,
+                "tools": [t.name for t in tools],
+                "spoken": spoken,
+                "verified": result.verified,
+                "leaks": result.verifyLeaks,
+                "grounded": grounded,
+                "latencyMs": (time.perf_counter() - t_start) * 1000,
+                "retrievalHit": bool(retrieved),
+                "live": bool(numbers.get("live")),
+                "writeBlocked": bool(numbers.get("writeBlocked")),
+            }
+        )
     )
     return result
 
@@ -280,6 +296,13 @@ def grok_tool_payload(result: OrchestratorResult) -> dict:
 
 
 def _speak(intent, ticker, snap, anomalies, backtest, risk, retrieved, numbers) -> str:
+    if numbers.get("secretBlocked"):
+        return "I do not have API keys. Secrets stay in Doppler and OK-Trader. I will not print them."
+    if numbers.get("writeBlocked"):
+        return (
+            "I will not submit an order. Write tools need human approval. "
+            "I can run a snapshot or a preflight instead."
+        )
     if numbers.get("liveError") and not numbers.get("live"):
         return (
             "Project Hub MCP is unreachable, so I will not invent a live price. "
