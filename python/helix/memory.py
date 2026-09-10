@@ -29,6 +29,10 @@ def _db() -> sqlite3.Connection:
 
 
 def remember(key: str, value: str, source: str = "user", ttl_ms: int | None = None) -> dict[str, Any]:
+    from helix.pgmem import available as pg_on, remember as pg_remember
+
+    if pg_on():
+        return pg_remember(key, value, source=source, ttl_ms=ttl_ms)
     key = key.strip()[:80] or "note"
     value = value.strip()[:800]
     if not value:
@@ -60,6 +64,10 @@ def _alive(observed_at: int, ttl_ms: int | None, now: int) -> bool:
 
 
 def recall(query: str, k: int = 5) -> list[dict[str, Any]]:
+    from helix.pgmem import available as pg_on, recall as pg_recall
+
+    if pg_on():
+        return pg_recall(query, k=k)
     now = int(time.time() * 1000)
     conn = _db()
     try:
@@ -93,6 +101,10 @@ def recall(query: str, k: int = 5) -> list[dict[str, Any]]:
 
 
 def forget(key: str) -> int:
+    from helix.pgmem import available as pg_on, forget as pg_forget
+
+    if pg_on():
+        return pg_forget(key)
     conn = _db()
     try:
         cur = conn.execute("DELETE FROM facts WHERE key = ? OR id = ?", (key, key))
@@ -103,6 +115,10 @@ def forget(key: str) -> int:
 
 
 def list_facts(limit: int = 40) -> list[dict[str, Any]]:
+    from helix.pgmem import available as pg_on, list_facts as pg_list
+
+    if pg_on():
+        return pg_list(limit)
     conn = _db()
     try:
         rows = conn.execute(

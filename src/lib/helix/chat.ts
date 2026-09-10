@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { pythonTurn, pythonVerify } from "./engine";
+import { pythonNarrate, pythonServing, pythonTurn, pythonVerify } from "./engine";
 import { grokToolPayload } from "./orchestrator";
 import type { OrchestratorResult } from "./types";
 
@@ -63,11 +63,34 @@ export const runHelixTurn = createServerFn({ method: "POST" })
     const text = data.text.slice(0, 800);
     const local = await pythonTurn(text);
     const t0 = Date.now();
-    const syn = await synthesize(local, text);
     const payload =
       "grokPayload" in local && local.grokPayload
         ? local.grokPayload
         : grokToolPayload(local);
+    const nar = await pythonNarrate({
+      query: text,
+      fallbackSpoken: local.fallbackSpoken,
+      payload,
+      traceId: local.traceId,
+    });
+    let syn =
+      nar && nar.route !== "local-tools"
+        ? { spoken: nar.spoken, ai: true as const, model: nar.model }
+        : await synthesize(local, text);
+    if ((!nar || nar.route === "local-tools") && syn.ai) {
+      const tokensIn = Math.max(1, Math.ceil((text.length + JSON.stringify(payload).length) / 4));
+      const tokensOut = Math.max(1, Math.ceil(syn.spoken.length / 4));
+      await pythonServing({
+        traceId: local.traceId,
+        model: syn.model,
+        ttftMs: Date.now() - t0,
+        totalMs: Date.now() - t0,
+        tokensIn,
+        tokensOut,
+        failed: false,
+        streaming: false,
+      });
+    }
     const checked = await pythonVerify({
       spoken: syn.spoken,
       fallbackSpoken: local.fallbackSpoken,

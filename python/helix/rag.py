@@ -12,7 +12,19 @@ from helix.models import RetrievedDoc
 from helix.reranker import EMBED_WEIGHTS, feat, score_rerank
 from helix.settings import AS_OF, HALF_LIFE_MS
 
-_INDEX = [(doc, embed(f"{doc.title} {doc.body} {doc.ticker or ''} {doc.type}")) for doc in CORPUS]
+_INDEX = None
+_INDEX_BACKEND = None
+
+
+def _index():
+    global _INDEX, _INDEX_BACKEND
+    from helix.embeddings import backend as emb_backend
+
+    b = emb_backend()
+    if _INDEX is None or _INDEX_BACKEND != b:
+        _INDEX = [(doc, embed(f"{doc.title} {doc.body} {doc.ticker or ''} {doc.type}")) for doc in CORPUS]
+        _INDEX_BACKEND = b
+    return _INDEX
 
 
 def recency_score(ts: int, as_of: int = AS_OF) -> float:
@@ -32,7 +44,7 @@ def retrieve(
     w = EMBED_WEIGHTS if weights is None else weights
     scored: list[RetrievedDoc] = []
     q_upper = query.upper()
-    for doc, vec in _INDEX:
+    for doc, vec in _index():
         if chronological and doc.ts > as_of:
             continue
         cos = cosine(qv, vec)
@@ -56,13 +68,15 @@ def retrieve(
             )
         )
     scored.sort(key=lambda r: r.score, reverse=True)
-    return scored[:k]
+    from helix.cross_encoder import rerank as ce_rerank
+
+    return ce_rerank(query, scored[: max(k, 12)], top=k)
 
 
 def lexical_retrieve(query: str, k: int = 8, as_of: int = AS_OF) -> list[RetrievedDoc]:
     q = set(tokenize(query))
     scored: list[RetrievedDoc] = []
-    for doc, _ in _INDEX:
+    for doc, _ in _index():
         if doc.ts > as_of:
             continue
         toks = tokenize(f"{doc.title} {doc.body}")

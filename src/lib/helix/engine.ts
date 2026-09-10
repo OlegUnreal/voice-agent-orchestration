@@ -25,6 +25,64 @@ export async function pythonTurn(text: string): Promise<OrchestratorResult & { g
   }
 }
 
+export async function pythonVerify(input: {
+  spoken: string;
+  fallbackSpoken: string;
+  payload: unknown;
+  traceId?: string;
+  query: string;
+  model?: string;
+}): Promise<{ ok: boolean; spoken: string; leaks: string[] }> {
+  try {
+    return (await engineFetch("/v1/verify", {
+      method: "POST",
+      body: JSON.stringify(input),
+    })) as { ok: boolean; spoken: string; leaks: string[] };
+  } catch {
+    return { ok: true, spoken: input.spoken, leaks: [] };
+  }
+}
+
+export async function pythonNarrate(input: {
+  query: string;
+  fallbackSpoken: string;
+  payload: unknown;
+  traceId?: string;
+}): Promise<{
+  spoken: string;
+  draftSpoken?: string;
+  model: string;
+  verified: boolean;
+  leaks: string[];
+  route: string;
+  serving?: Record<string, unknown>;
+} | null> {
+  try {
+    return (await engineFetch("/v1/narrate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    })) as {
+      spoken: string;
+      draftSpoken?: string;
+      model: string;
+      verified: boolean;
+      leaks: string[];
+      route: string;
+      serving?: Record<string, unknown>;
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function pythonServing(row: Record<string, unknown>) {
+  try {
+    await engineFetch("/v1/serving", { method: "POST", body: JSON.stringify(row) });
+  } catch {
+    /* engines down */
+  }
+}
+
 export const getMarketBook = createServerFn({ method: "GET" })
   .validator((input: { ticker: string }) => input)
   .handler(async ({ data }) => {
@@ -88,24 +146,6 @@ export const getGateway = createServerFn({ method: "GET" }).handler(async () => 
     return { python: false };
   }
 });
-
-export async function pythonVerify(input: {
-  spoken: string;
-  fallbackSpoken: string;
-  payload: unknown;
-  traceId?: string;
-  query: string;
-  model?: string;
-}): Promise<{ ok: boolean; spoken: string; leaks: string[] }> {
-  try {
-    return (await engineFetch("/v1/verify", {
-      method: "POST",
-      body: JSON.stringify(input),
-    })) as { ok: boolean; spoken: string; leaks: string[] };
-  } catch {
-    return { ok: true, spoken: input.spoken, leaks: [] };
-  }
-}
 
 export const submitFeedback = createServerFn({ method: "POST" })
   .validator(

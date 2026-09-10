@@ -24,6 +24,12 @@ def main(argv: list[str] | None = None) -> int:
     mem.add_argument("text", nargs="+")
     rec = sub.add_parser("recall", help="Recall facts")
     rec.add_argument("text", nargs="*")
+    sub.add_parser("snapshot", help="Hash and copy the live training dump")
+    sub.add_parser("exp", help="List experiment runs")
+    sub.add_parser("serving", help="TTFT / tokens / cost report")
+    g = sub.add_parser("graph", help="HITL graph turn")
+    g.add_argument("text", nargs="+")
+    sub.add_parser("finetune", help="Export TRL/PEFT JSONL from the flywheel")
 
     args = parser.parse_args(argv)
     if args.cmd == "serve":
@@ -81,6 +87,31 @@ def main(argv: list[str] | None = None) -> int:
         q = " ".join(args.text)
         rows = recall(q, k=8) if q else list_facts(8)
         print(json.dumps(rows, indent=2))
+        return 0
+    if args.cmd == "snapshot":
+        from helix.snapshot import snapshot
+
+        print(json.dumps(snapshot(), indent=2))
+        return 0
+    if args.cmd == "exp":
+        from helix.experiments import list_experiments
+
+        print(json.dumps(list_experiments(), indent=2, default=str)[:4000])
+        return 0
+    if args.cmd == "serving":
+        from helix.serving import serving_report
+
+        print(json.dumps(serving_report(), indent=2))
+        return 0
+    if args.cmd == "graph":
+        from helix.graph import run_graph
+
+        print(json.dumps(run_graph(" ".join(args.text)), indent=2, default=str)[:4000])
+        return 0
+    if args.cmd == "finetune":
+        from helix.finetune import train_peft
+
+        print(json.dumps(train_peft(export_only=True), indent=2))
         return 0
     return 1
 

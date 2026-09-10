@@ -12,15 +12,22 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/helix eval
 .venv/bin/helix train
 .venv/bin/helix export
+.venv/bin/helix snapshot
+.venv/bin/helix serving
+.venv/bin/helix graph "Place a market buy of 2 BTC"
+.venv/bin/helix finetune
 .venv/bin/helix redteam
 .venv/bin/pytest
 ```
+
+Extras: `.[nlp]` MiniLM/cross-encoder, `.[pg]` pgvector, `.[agents]` LangGraph, `.[train]` PEFT/TRL.
 
 From the repo root, the same engines run in Docker with the voice UI:
 
 ```bash
 cp compose.env.example .env
 docker compose up --build
-docker compose exec engines helix redteam
+docker compose exec engines helix serving
 ```
+
 

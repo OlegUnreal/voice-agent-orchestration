@@ -20,6 +20,8 @@ AGENTS.project.md
 python/.venv/
 python/data/*.jsonl
 python/data/*.sqlite
+python/data/snapshots/
+python/data/trl/
 __pycache__/
 __pycache__/
 *.pyc

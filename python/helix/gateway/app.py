@@ -18,7 +18,13 @@ from helix.market import (
     get_bars,
     snapshot,
 )
+from helix.experiments import list_experiments, log_experiment
+from helix.finetune import export_trl, train_peft
+from helix.graph import resume_graph, run_graph
 from helix.ledger import export_dataset, list_traces, log_feedback, log_verify_fail
+from helix.narrate import narrate
+from helix.serving import log_serving, serving_report
+from helix.snapshot import list_snapshots, snapshot as take_snapshot
 from helix.redteam import run_redteam
 from helix.teacher import log_teacher
 from helix.memory import forget, list_facts, remember, recall
@@ -85,7 +91,7 @@ class MemoryWrite(BaseModel):
 
 
 class RouteDecision(BaseModel):
-    model: Literal["local-tools", "grok-4.5", "grok-4.5-cache"]
+    model: Literal["local-tools", "grok-4.5", "grok-4.5-cache", "vllm"]
     reason: str
 
 
@@ -106,6 +112,9 @@ def health() -> dict[str, Any]:
         "service": "helix-engines",
         "dataset": dataset_version(),
         "mcp": {"configured": mcp.get("configured"), "ok": mcp.get("ok"), "count": mcp.get("count", 0)},
+        "embeddings": os.environ.get("HELIX_EMBEDDINGS", "hash"),
+        "vllm": bool(os.environ.get("HELIX_VLLM_URL")),
+        "postgres": bool(os.environ.get("DATABASE_URL") or os.environ.get("HELIX_DATABASE_URL")),
     }
 
 
@@ -163,18 +172,106 @@ def rag_retrieve(req: RetrieveRequest) -> dict[str, Any]:
 def evals(kind: RetrieverKind = "lora") -> dict[str, Any]:
     w = get_adapter_weights(kind)
     metrics = run_eval_suite(kind, w)
+    gates = gate_check(metrics)
+    log_experiment(
+        "evalforge",
+        {"kind": kind},
+        metrics.model_dump(),
+        dataset=dataset_version(),
+    )
     return {
         "metrics": metrics.model_dump(),
-        "gates": gate_check(metrics),
+        "gates": gates,
         "golden": [c.model_dump() for c in GOLDEN],
         "datasetVersion": dataset_version(),
         "kind": kind,
     }
 
 
+class NarrateRequest(BaseModel):
+    query: str
+    fallbackSpoken: str
+    payload: dict[str, Any] = {}
+    traceId: str | None = None
+
+
+class GraphRequest(BaseModel):
+    query: str
+    threadId: str | None = None
+
+
+class GraphResume(BaseModel):
+    threadId: str
+    approved: bool = False
+
+
+class ServingEvent(BaseModel):
+    traceId: str | None = None
+    model: str = "local-tools"
+    ttftMs: float = 0
+    totalMs: float = 0
+    tokensIn: int = 0
+    tokensOut: int = 0
+    costUsd: float = 0
+    failed: bool = False
+    streaming: bool = False
+
+
+@app.post("/v1/narrate")
+def narrate_route(req: NarrateRequest) -> dict[str, Any]:
+    return narrate(req.query, req.payload, req.fallbackSpoken, req.traceId)
+
+
+@app.post("/v1/graph")
+def graph_route(req: GraphRequest) -> dict[str, Any]:
+    return run_graph(req.query, req.threadId)
+
+
+@app.post("/v1/graph/resume")
+def graph_resume_route(req: GraphResume) -> dict[str, Any]:
+    return resume_graph(req.threadId, req.approved)
+
+
+@app.post("/v1/serving")
+def serving_post(req: ServingEvent) -> dict[str, Any]:
+    return log_serving(req.model_dump())
+
+
+@app.get("/v1/serving")
+def serving_get() -> dict[str, Any]:
+    return serving_report()
+
+
+@app.post("/v1/dataset/snapshot")
+def dataset_snapshot(tag: str = "") -> dict[str, Any]:
+    return take_snapshot(tag or None)
+
+
+@app.get("/v1/dataset/snapshots")
+def dataset_snapshots() -> dict[str, Any]:
+    return {"snapshots": list_snapshots()}
+
+
+@app.get("/v1/experiments")
+def experiments_get() -> dict[str, Any]:
+    return {"experiments": list_experiments()}
+
+
+@app.post("/v1/finetune/export")
+def finetune_export() -> dict[str, Any]:
+    return export_trl()
+
+
+@app.post("/v1/finetune/train")
+def finetune_train() -> dict[str, Any]:
+    return train_peft(export_only=True)
+
+
 @app.get("/v1/evals/redteam")
 def evals_redteam() -> dict[str, Any]:
-    return run_redteam()
+    report = run_redteam()
+    log_experiment("redteam", {}, {"rate": report.get("rate"), "passed": report.get("passed")})
+    return report
 
 
 @app.post("/v1/training/train")

@@ -19,6 +19,20 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+nlp = ["sentence-transformers>=3.0"]
+train = ["torch", "transformers>=4.44", "peft>=0.12", "trl>=0.9", "datasets>=2.20"]
+pg = ["psycopg[binary]>=3.2"]
+agents = ["langgraph>=0.2"]
+all = [
+  "sentence-transformers>=3.0",
+  "torch",
+  "transformers>=4.44",
+  "peft>=0.12",
+  "trl>=0.9",
+  "datasets>=2.20",
+  "psycopg[binary]>=3.2",
+  "langgraph>=0.2",
+]
 
 [project.scripts]
 helix = "helix.cli:main"

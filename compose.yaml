@@ -31,6 +31,13 @@ services:
       HELIX_MCP_PROTOCOL: ${HELIX_MCP_PROTOCOL:-2025-06-18}
       HELIX_MCP_TIMEOUT: ${HELIX_MCP_TIMEOUT:-8}
       HELIX_ALLOW_SIMULATOR: ${HELIX_ALLOW_SIMULATOR:-true}
+      HELIX_EMBEDDINGS: ${HELIX_EMBEDDINGS:-hash}
+      HELIX_CROSS_ENCODER: ${HELIX_CROSS_ENCODER:-}
+      HELIX_VLLM_URL: ${HELIX_VLLM_URL:-}
+      HELIX_VLLM_MODEL: ${HELIX_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct}
+      HELIX_VLLM_TOKEN: ${HELIX_VLLM_TOKEN:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
     volumes:
       - helix-data:/data
     extra_hosts:
@@ -52,5 +59,44 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  db:
+    profiles: ["pg"]
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: helix
+      POSTGRES_PASSWORD: helix
+      POSTGRES_DB: helix
+    ports:
+      - "5432:5432"
+    volumes:
+      - helix-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  vllm:
+    profiles: ["vllm"]
+    image: vllm/vllm-openai:latest
+    command:
+      - --model
+      - ${HELIX_VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct}
+      - --max-model-len
+      - "4096"
+    ports:
+      - "8000:8000"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
 volumes:
   helix-data:
+  helix-pg:
