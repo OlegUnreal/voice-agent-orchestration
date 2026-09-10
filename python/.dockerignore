@@ -1,0 +1,7 @@
+.venv
+data/*.jsonl
+data/*.sqlite
+__pycache__
+*.pyc
+.pytest_cache
+*.egg-info

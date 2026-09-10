@@ -1,0 +1,56 @@
+# Local Helix: Python engines + voice UI.
+#
+#   cp compose.env.example .env    # optional: MCP URL, XAI_API_KEY
+#   docker compose up --build
+#   open http://127.0.0.1:8080
+#
+# All Python tools (same container, persisted /data):
+#   docker compose exec engines helix turn "What is BTC's current regime?"
+#   docker compose exec engines helix mcp
+#   docker compose exec engines helix remember "isolated 1x and 1 USDT risk cap"
+#   docker compose exec engines helix recall "risk cap"
+#   docker compose exec engines helix export
+#   docker compose exec engines helix redteam
+#   docker compose exec engines pytest -q
+
+name: helix
+
+services:
+  engines:
+    build:
+      context: ./python
+    image: helix-engines:local
+    ports:
+      - "8090:8090"
+    environment:
+      HELIX_HOST: 0.0.0.0
+      HELIX_PORT: "8090"
+      HELIX_DATA_DIR: /data
+      HELIX_MCP_URL: ${HELIX_MCP_URL:-}
+      HELIX_MCP_TOKEN: ${HELIX_MCP_TOKEN:-}
+      HELIX_MCP_PROTOCOL: ${HELIX_MCP_PROTOCOL:-2025-06-18}
+      HELIX_MCP_TIMEOUT: ${HELIX_MCP_TIMEOUT:-8}
+      HELIX_ALLOW_SIMULATOR: ${HELIX_ALLOW_SIMULATOR:-true}
+    volumes:
+      - helix-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: helix-web:local
+    ports:
+      - "8080:8080"
+    environment:
+      HELIX_ENGINE_URL: http://engines:8090
+      XAI_API_KEY: ${XAI_API_KEY:-}
+    depends_on:
+      engines:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  helix-data:

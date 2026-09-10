@@ -54,6 +54,33 @@ Without `HELIX_MCP_URL`, Helix uses the bundled demo tape so the UI still works.
 
 Copy [`python/mcp.env.example`](python/mcp.env.example).
 
+## Docker (local, all tools)
+
+```bash
+cp compose.env.example .env          # optional HELIX_MCP_URL / XAI_API_KEY
+docker compose up --build
+# UI  http://127.0.0.1:8080
+# API http://127.0.0.1:8090/health
+```
+
+| Service | Image | Port |
+|---|---|---|
+| `engines` | FastAPI + pandas/NumPy/sklearn + verifier/ledger/memory/redteam/MCP client | 8090 |
+| `web` | Voice UI (`HELIX_ENGINE_URL=http://engines:8090`) | 8080 |
+
+Traces, DPO pairs and SQLite live in the `helix-data` volume (`HELIX_DATA_DIR=/data`).
+
+```bash
+docker compose exec engines helix turn "What is BTC's current regime?"
+docker compose exec engines helix mcp
+docker compose exec engines helix remember "isolated 1x and 1 USDT risk cap"
+docker compose exec engines helix export
+docker compose exec engines helix redteam
+docker compose exec engines pytest -q
+```
+
+Live MCP from the host Tailscale node: set `HELIX_MCP_URL` in `.env` and `HELIX_ALLOW_SIMULATOR=false`. The engines container uses host DNS (`extra_hosts: host.docker.internal`). Do not publish 8090 past localhost.
+
 Try: *What is BTC’s current regime?* · *Portfolio risk if BTC drops 12 percent.* · *Remember that isolated 1x…* · then thumbs on the reply.
 
 ## Architecture

@@ -16,4 +16,11 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/pytest
 ```
 
-Turns append `data/traces.jsonl`. Thumbs-up writes SFT; thumbs-down plus a rewrite writes DPO. Grok drafts that fail the verifier become distill pairs. Secrets are scrubbed before disk. `helix redteam` is the jailbreak golden.
+From the repo root, the same engines run in Docker with the voice UI:
+
+```bash
+cp compose.env.example .env
+docker compose up --build
+docker compose exec engines helix redteam
+```
+
