@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from helix.evals import GOLDEN, dataset_version, gate_check, run_eval_suite
 from helix.drift import drift_report
 from helix.ab_test import run_ab_test
+from helix.dashboard import dashboard_report
 from helix.gateway.cache import TtlCache
 from helix.market import (
     all_snapshots,
@@ -312,6 +313,16 @@ def ab_test(req: ABTestRequest) -> dict[str, Any]:
     per-case assignment, and paired permutation test significance (p < 0.05).
     """
     return run_ab_test(kind_a=req.kindA, kind_b=req.kindB, seed=req.seed)
+
+
+@app.get("/v1/dashboard")
+def dashboard(kind: str = "lora") -> dict[str, Any]:
+    """Performance dashboard: single pane aggregating serving, eval, drift, experiments.
+
+    Returns a health status (green/yellow/red) plus per-section detail.
+    Suitable for Grafana, Slack webhooks, or CLI summaries.
+    """
+    return dashboard_report(eval_kind=kind)
 
 
 class NarrateRequest(BaseModel):

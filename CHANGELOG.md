@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0 — 2026-09-18
+
+- **Performance dashboard** (`dashboard.py`, `GET /v1/dashboard`): single-pane ops view aggregating serving (TTFT/failure/tokens/cost), eval (golden set metrics + gates), drift (metric/serving/input), and recent experiments. Returns `health` status (green/yellow/red) based on gate failures, drift flags, and serving failure rate. Suitable for Grafana panels, Slack webhooks, or CLI summaries.
+- Suite 50 passing, 1 skipped (pgvector profile).
+
 ## 0.8.0 — 2026-09-18
 
 - **A/B testing framework** (`ab_test.py`, `POST /v1/ab-test`): compare two reranker variants (e.g. `lora` vs `hybrid`) on the golden eval set with deterministic hash-based assignment. Paired permutation test on MRR (200 permutations) reports whether the difference is statistically significant. Results logged to `experiments.jsonl` for MLflow-style tracking. No scipy dependency.

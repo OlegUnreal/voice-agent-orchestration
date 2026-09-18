@@ -87,3 +87,17 @@ def test_ab_test_endpoint():
     assert "assignments" in body
     assert body["variantA"]["kind"] == "lora"
     assert body["variantB"]["kind"] == "hybrid"
+
+
+def test_dashboard_endpoint():
+    r = client.get("/v1/dashboard")
+    assert r.status_code == 200
+    body = r.json()
+    assert "health" in body
+    assert body["health"] in {"green", "yellow", "red"}
+    assert "serving" in body
+    assert "eval" in body
+    assert "drift" in body
+    assert "experiments" in body
+    assert "gatesOk" in body["eval"]
+    assert "anyDrift" in body["drift"]
