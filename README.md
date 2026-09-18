@@ -1,8 +1,8 @@
 # Helix — Voice agent orchestration
 
-Voice-first copilot over **your** tools. Python owns the numbers. The language model only speaks after tools return. Clone it, point `HELIX_MCP_URL` at your MCP server, talk.
-
 [![CI](https://github.com/OlegUnreal/voice-agent-orchestration/actions/workflows/ci.yml/badge.svg)](https://github.com/OlegUnreal/voice-agent-orchestration/actions/workflows/ci.yml)
+
+Voice-first copilot over **your** tools. Python owns the numbers. The language model only speaks after tools return. Clone it, point `HELIX_MCP_URL` at your MCP server, talk.
 
 > **The model does not pick tools and does not invent prices, VaR, or positions.** That is the whole product.
 
