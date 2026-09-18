@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from helix.evals import GOLDEN, dataset_version, gate_check, run_eval_suite
+from helix.drift import drift_report
 from helix.gateway.cache import TtlCache
 from helix.market import (
     all_snapshots,
@@ -284,6 +285,16 @@ def evals(kind: RetrieverKind = "lora") -> dict[str, Any]:
         "datasetVersion": dataset_version(),
         "kind": kind,
     }
+
+
+@app.get("/v1/drift")
+def drift() -> dict[str, Any]:
+    """Model drift detection: metric, serving, and input distribution monitoring.
+
+    Compares recent window against historical baseline for each category.
+    Flags metrics where current value is >2σ from historical mean.
+    """
+    return drift_report()
 
 
 class NarrateRequest(BaseModel):

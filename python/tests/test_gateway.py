@@ -64,3 +64,14 @@ def test_verify_and_feedback():
     assert mem.status_code == 200
     listed = client.get("/v1/memory")
     assert listed.json()["facts"]
+
+
+def test_drift_endpoint():
+    r = client.get("/v1/drift")
+    assert r.status_code == 200
+    body = r.json()
+    assert "metric" in body
+    assert "serving" in body
+    assert "input" in body
+    assert "anyDrift" in body
+    assert "ts" in body

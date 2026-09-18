@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0 — 2026-09-18
+
+- **Model drift detection** (`drift.py`, `GET /v1/drift`): three-category monitoring — metric drift (golden-set eval vs historical experiment runs), serving drift (TTFT/failure rate/tokens per query, recent window vs baseline), input drift (query length distribution + intent mix shift). Z-test for mean shift with 2σ threshold, no scipy dependency. Returns `anyDrift` flag plus per-category detail.
+- Suite 48 passing, 1 skipped (pgvector profile).
+
 ## 0.6.0 — 2026-09-18
 
 - **SSE streaming endpoint** (`POST /v1/turn/stream`): Server-Sent Events for progressive voice-UI rendering. Streams response in phases — `thinking` → `tool` → `spoken` (chunked for streaming TTS) → `citation` → `done` — each event is JSON with `type` and `elapsed_ms`. Voice UIs start TTS before the orchestrator finishes.
