@@ -8,7 +8,7 @@ import time
 import numpy as np
 
 from helix.models import EvalCase, EvalMetrics, Intent
-from helix.rag import lexical_retrieve, retrieve
+from helix.rag import blend_retrieve, dense_retrieve, lexical_retrieve, overlap_retrieve, retrieve
 from helix.reranker import BASELINE_WEIGHTS
 from helix.router import classify_intent
 from helix.settings import AS_OF, DAY_MS as D, GATES
@@ -76,15 +76,47 @@ def retrieval_metrics(ranked_ids: list[str], relevant: list[str]) -> dict[str, f
     }
 
 
+RETRIEVERS: dict[str, str] = {
+    "overlap": "v1 lexical: raw token overlap, no idf, no saturation",
+    "lexical": "BM25 (k1=1.4, b=0.4, title x2)",
+    "dense": "hashing-64 cosine only, no lexical signal",
+    "hybrid": "BM25 + dense cosine fused with RRF, first stage only",
+    "blend": "v1 scorer: 0.4*rerank + 0.4*overlap + 0.12*ticker + 0.08*recency",
+    "lora": "hybrid + learned logistic rerank (production path)",
+    # The three rows below are *not* different pipelines: they are the product
+    # pipeline scored with a caller-supplied coefficient vector, which is what
+    # the model registry needs in order to compare adapters fairly.
+    "embed": "hybrid + v1 EMBED_WEIGHTS rerank vector (5-d, projected by name)",
+    "qlora": "hybrid + rank-limited rerank adapter",
+    "baseline": "hybrid + v1 BASELINE_WEIGHTS rerank vector",
+}
+# Kinds that mean "product hybrid, reranker on, weights from the caller".
+_RERANKED_KINDS = ("lora", "embed", "qlora", "baseline")
+ABLATION_ORDER = ("overlap", "lexical", "dense", "hybrid", "blend", "lora")
+
+
+def _run_retriever(kind: str, query: str, as_of: int, weights: np.ndarray | None) -> list:
+    if kind == "overlap":
+        return overlap_retrieve(query, 10, as_of)
+    if kind == "lexical":
+        return lexical_retrieve(query, 10, as_of)
+    if kind == "dense":
+        return dense_retrieve(query, 10, as_of)
+    if kind == "hybrid":
+        return retrieve(query, k=10, as_of=as_of, fusion="rrf", rerank=False)
+    if kind == "blend":
+        return blend_retrieve(query, k=10, as_of=as_of, weights=weights)
+    if kind in _RERANKED_KINDS:
+        return retrieve(query, k=10, as_of=as_of, weights=weights)
+    raise ValueError(f"unknown eval kind {kind!r}; expected one of {sorted(RETRIEVERS)}")
+
+
 def run_eval_suite(kind: str = "lora", weights: np.ndarray | None = None) -> EvalMetrics:
     times: list[float] = []
     rows: list[dict[str, float]] = []
     for case in GOLDEN:
         t0 = time.perf_counter()
-        if kind == "lexical":
-            ranked = lexical_retrieve(case.query, 10, case.asOf)
-        else:
-            ranked = retrieve(case.query, k=10, as_of=case.asOf, weights=weights)
+        ranked = _run_retriever(kind, case.query, case.asOf, weights)
         ids = [r.doc.id for r in ranked]
         ir = retrieval_metrics(ids, case.relevant)
         intent = classify_intent(case.query)
@@ -121,7 +153,10 @@ def run_eval_suite(kind: str = "lora", weights: np.ndarray | None = None) -> Eva
         structuredOk=pick("structured"),
         p50Ms=p50,
         p95Ms=p95,
-        costUsd=0.0 if kind == "lexical" else 0.0012,
+        # Placeholder cost model, not a measurement: every stage here runs in
+        # process. The number exists so the cost gate has something to bind to
+        # and so swapping in a paid embedder/reranker trips it deliberately.
+        costUsd=0.0 if kind in {"overlap", "lexical", "dense", "hybrid"} else 0.0012,
     )
 
 
@@ -133,3 +168,63 @@ def gate_check(m: EvalMetrics) -> list[dict]:
         {"name": "p95 < 800ms", "ok": m.p95Ms < GATES["p95Ms"], "value": m.p95Ms},
         {"name": "Cost/query < $0.02", "ok": m.costUsd < GATES["costUsd"], "value": m.costUsd},
     ]
+
+
+def ablation(kinds: tuple[str, ...] = ABLATION_ORDER) -> list[dict]:
+    """Retriever ablation over the golden set: one row per stage of the ladder.
+
+    Deltas are against the BM25 row (`lexical`), which is the strongest single
+    retriever here and therefore the honest control: beating the *hybrid* row
+    would flatter the reranker, beating lexical shows what fusion adds.
+    """
+    scores = {kind: run_eval_suite(kind) for kind in kinds}
+    control = scores.get("lexical")
+    rows: list[dict] = []
+    for kind in kinds:
+        m = scores[kind]
+        row = {
+            "kind": kind,
+            "what": RETRIEVERS[kind],
+            "recallAt5": round(m.recallAt5, 4),
+            "recallAt10": round(m.recallAt10, 4),
+            "mrr": round(m.mrr, 4),
+            "ndcgAt10": round(m.ndcgAt10, 4),
+            "p95Ms": round(m.p95Ms, 2),
+            "gatesOk": all(g["ok"] for g in gate_check(m)),
+        }
+        if control is not None and kind != "lexical":
+            row["deltaMrr"] = round(m.mrr - control.mrr, 4)
+            row["deltaNdcgAt10"] = round(m.ndcgAt10 - control.ndcgAt10, 4)
+            row["deltaRecallAt5"] = round(m.recallAt5 - control.recallAt5, 4)
+        rows.append(row)
+    return rows
+
+
+def main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(prog="helix.evals")
+    parser.add_argument("--ablation", action="store_true", help="run every retriever row over GOLDEN")
+    parser.add_argument("--kind", default="lora")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    if args.ablation:
+        rows = ablation()
+        if args.json:
+            print(json.dumps(rows, indent=2))
+        else:
+            head = f"{'kind':<9}{'R@5':>8}{'R@10':>8}{'MRR':>8}{'nDCG@10':>9}{'p95ms':>8}  delta vs BM25 control"
+            print(head)
+            print("-" * len(head))
+            for r in rows:
+                delta = "  " if "deltaMrr" not in r else f"  MRR{r['deltaMrr']:+.4f}  nDCG{r['deltaNdcgAt10']:+.4f}  R@5{r['deltaRecallAt5']:+.4f}"
+                print(f"{r['kind']:<9}{r['recallAt5']:>8.4f}{r['recallAt10']:>8.4f}{r['mrr']:>8.4f}{r['ndcgAt10']:>9.4f}{r['p95Ms']:>8.2f}{delta}")
+        return 0
+    m = run_eval_suite(args.kind)
+    print(json.dumps({"kind": args.kind, "metrics": m.model_dump(), "gates": gate_check(m)}, indent=2))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

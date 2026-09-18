@@ -192,7 +192,7 @@ Local registry: [`python/helix/mcp.py`](python/helix/mcp.py). Live catalog: Stre
 
 A turn is `grounded` when citations exist, a quant tool fired, live MCP returned payload, or memory wrote/recalled — **and** the verifier passed.
 
-RAG: cosine + token overlap + ticker/title hit + 14-day recency + chronological mask (`doc.ts > asOf` dropped). Rerank is a logistic probe (LoRA-**style**, not PEFT on an LLM).
+RAG: hybrid — dense cosine + Okapi BM25 ([`bm25.py`](python/helix/bm25.py)) fused by reciprocal rank fusion, plus ticker/title hit, 14-day recency, and a chronological mask (`doc.ts > asOf` dropped). Rerank is a RankNet pairwise logistic probe (LoRA-**style**, not PEFT on an LLM) with an acceptance gate: `python -m helix.reranker --fit` writes [`rerank_model.json`](python/helix/rerank_model.json) and the runtime ships it **only if it beats the hand-set prior on holdout nDCG@5** — a rejected artifact falls back to the prior with the reason recorded, never silently.
 
 After optional Grok narration, [`POST /v1/verify`](python/helix/gateway/app.py) runs again. Leaked numbers never reach TTS.
 
@@ -230,6 +230,8 @@ Default install stays CPU-only (`pip install -e ".[dev]"`). Heavier résumé too
 | LangGraph / agents | [`graph.py`](python/helix/graph.py) | Restart loses “approve this write”. **Not ReAct** — same supervisor, HITL interrupt. Resume still **does not execute** orders | `[agents]` if you want LangGraph checkpointer; inline graph always works |
 | Dataset versioning | [`snapshot.py`](python/helix/snapshot.py) | Golden set was hashed; live traces were mush. LoRA on mixed dumps | default |
 | MLflow-style tracking | [`experiments.py`](python/helix/experiments.py) | Cannot answer “which rerank/prompt won” after 10 runs. No tracking server required | default |
+| Hybrid retrieval (BM25 + RRF) | [`bm25.py`](python/helix/bm25.py) | Token-overlap scoring has no saturation and no IDF, and raw-score blending mixes incomparable scales. Okapi BM25 fixes term weighting; RRF (Cormack et al., SIGIR 2009) fuses on rank, not score | default |
+| RankNet reranker + acceptance gate | [`reranker.py`](python/helix/reranker.py) | A fitted reranker that loses to a hand prior still ships in most demos. Here C is picked by query-grouped CV inside the train split, the holdout is read only by the gate, and a losing artifact degrades to the prior with the reason on record | default |
 | SFT / LoRA / QLoRA / PEFT | [`finetune.py`](python/helix/finetune.py) | Mouth still rented (Grok) until you train. Export is real TRL JSONL; **weights stay in helix-live** | `[train]` + GPU; `helix finetune` is export-only without CUDA |
 | vLLM | `HELIX_VLLM_URL` + compose profile `vllm` | API p95 and offline copilot **after** you have weights. Empty vLLM is décor — profile is opt-in | GPU |
 | EvalForge gates | [`evals.py`](python/helix/evals.py) + `helix redteam` | Prompt drift, jailbreaks, invented VaR | default |

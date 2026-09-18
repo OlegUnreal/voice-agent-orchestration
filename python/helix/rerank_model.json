@@ -1,0 +1,245 @@
+{
+  "version": "rerank-v2",
+  "accepted": false,
+  "algorithm": "RankNet - sklearn LogisticRegression on within-query feature differences (f+ minus f-, mirrored for two classes), L2 penalty, C selected by query-grouped 4-fold CV inside the train split",
+  "algorithmParams": {
+    "objective": "pairwise-logistic (RankNet)",
+    "C": 1.0,
+    "maxIter": 2000,
+    "solver": "lbfgs",
+    "penalty": "l2",
+    "biasDropped": true
+  },
+  "featureNames": [
+    "bias",
+    "cosine",
+    "bm25",
+    "rrf",
+    "recency",
+    "tickerHit",
+    "titleHit",
+    "lexicalRankInv",
+    "queryTerms"
+  ],
+  "coefficients": [
+    -0.0,
+    0.18370778,
+    2.61244594,
+    0.90291592,
+    0.70395803,
+    0.7489232,
+    0.92717162,
+    1.50450491,
+    0.0
+  ],
+  "metrics": {
+    "train": {
+      "mrr": 1.0,
+      "precisionAt1": 1.0,
+      "ndcg5": 0.9587,
+      "logLoss": 1.124908,
+      "queries": 16.0,
+      "pairs": 54.0
+    },
+    "holdout": {
+      "mrr": 1.0,
+      "precisionAt1": 1.0,
+      "ndcg5": 0.935811,
+      "logLoss": 1.156774,
+      "queries": 6.0,
+      "pairs": 20.0
+    },
+    "golden": {
+      "mrr": 1.0,
+      "precisionAt1": 1.0,
+      "ndcg5": 0.969944,
+      "logLoss": 0.774683,
+      "queries": 5.0,
+      "pairs": 17.0
+    },
+    "priorTrain": {
+      "mrr": 1.0,
+      "precisionAt1": 1.0,
+      "ndcg5": 0.929638,
+      "logLoss": 0.789979,
+      "queries": 16.0,
+      "pairs": 54.0
+    },
+    "priorHoldout": {
+      "mrr": 1.0,
+      "precisionAt1": 1.0,
+      "ndcg5": 0.987154,
+      "logLoss": 0.811685,
+      "queries": 6.0,
+      "pairs": 20.0
+    },
+    "priorGolden": {
+      "mrr": 1.0,
+      "precisionAt1": 1.0,
+      "ndcg5": 0.969944,
+      "logLoss": 0.515263,
+      "queries": 5.0,
+      "pairs": 17.0
+    },
+    "pointwiseComparator": {
+      "mrr": 1.0,
+      "precisionAt1": 1.0,
+      "ndcg5": 0.935811,
+      "logLoss": 0.632049,
+      "queries": 6.0,
+      "pairs": 20.0
+    }
+  },
+  "acceptance": {
+    "rule": "fitted must be >= prior on holdout ndcg5 and mrr",
+    "accepted": false,
+    "reason": "loses-to-prior-on-['ndcg5']",
+    "holdout": {
+      "ndcg5": 0.935811,
+      "mrr": 1.0,
+      "logLoss": 1.156774
+    },
+    "priorHoldout": {
+      "ndcg5": 0.987154,
+      "mrr": 1.0,
+      "logLoss": 0.811685
+    }
+  },
+  "selection": {
+    "method": "query-grouped K-fold CV, scored on ndcg@5 of the held-out folds",
+    "why": "rows from one query share a candidate pool; row-level folds leak the ordering being scored",
+    "splitUsed": "train",
+    "grid": [
+      0.05,
+      0.2,
+      1.0,
+      5.0
+    ],
+    "folds": 4,
+    "curve": [
+      {
+        "C": 0.05,
+        "cvNdcg5": 0.943649,
+        "folds": 4
+      },
+      {
+        "C": 0.2,
+        "cvNdcg5": 0.943649,
+        "folds": 4
+      },
+      {
+        "C": 1.0,
+        "cvNdcg5": 0.954829,
+        "folds": 4
+      },
+      {
+        "C": 5.0,
+        "cvNdcg5": 0.945006,
+        "folds": 4
+      }
+    ],
+    "selected": 1.0,
+    "orderedPairs": 65,
+    "queriesWithOrdering": 16
+  },
+  "dataset": {
+    "path": "rerank_qrels.jsonl",
+    "sha256": "7cd936a55c3c31c0",
+    "pairs": 91,
+    "trainPairs": 54,
+    "holdoutPairs": 20,
+    "goldenPairs": 17,
+    "queries": 27,
+    "skipped": [
+      {
+        "query": "spot exchange inflow z score distribution evidence",
+        "docId": "R-SOL-ONCHAIN",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "spot exchange inflow z score distribution evidence",
+        "docId": "R-BTC-REGIME",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "liquid staking token discount and validator queue",
+        "docId": "R-ETH-REGIME",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "liquid staking token discount and validator queue",
+        "docId": "R-MCP",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "round trip transaction cost ten basis points sma crossover",
+        "docId": "R-PORT-VAR",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "negative twelve percent bitcoin shock scenario pnl",
+        "docId": "R-AAPL-DEF",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "negative twelve percent bitcoin shock scenario pnl",
+        "docId": "R-MCP",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "low correlation large cap equity as volatility ballast",
+        "docId": "R-PORT-REVIEW",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "fifty and two hundred day sma spread compression bitcoin",
+        "docId": "R-ETH-REGIME",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "structured output checklist for a discretionary tilt",
+        "docId": "R-MCP",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "regression suite re run on every candidate checkpoint",
+        "docId": "R-SOL-ONCHAIN",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "volume z impulse days before a mean reversion entry",
+        "docId": "R-BTC-STRAT",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "staging shadow canary production promotion criteria",
+        "docId": "R-MCP",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "spot demand pulse confirmed by active addresses",
+        "docId": "R-BTC-REGIME",
+        "reason": "outside-pool"
+      },
+      {
+        "query": "every numerical claim tied to a snapshot or retrieved evidence",
+        "docId": "R-RAG-POLICY",
+        "reason": "outside-pool"
+      }
+    ]
+  },
+  "prior": [
+    -1.6,
+    1.6,
+    2.4,
+    1.2,
+    0.5,
+    0.7,
+    0.5,
+    0.9,
+    0.0
+  ],
+  "trainedAt": "2026-09-18T02:00:37+00:00",
+  "sklearnVersion": "1.9.1",
+  "fitMs": 262.935
+}

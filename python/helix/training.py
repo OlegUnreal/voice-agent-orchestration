@@ -1,4 +1,4 @@
-"""TrainingOps: SFT-style pairs from golden qrels, LoRA r8 / QLoRA r4, model registry."""
+"""TrainingOps: labelled qrels -> rank-limited rerank adapters, model registry, promotion."""
 
 from __future__ import annotations
 
@@ -6,11 +6,18 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from helix.evals import GOLDEN, gate_check, run_eval_suite
+from helix.evals import gate_check, run_eval_suite
 from helix.models import Checkpoint, EvalMetrics, PromotionStage
-from helix.rag import retrieve
-from helix.reranker import BASELINE_WEIGHTS, EMBED_WEIGHTS, TrainPoint, feat, sklearn_check, train_logistic
-from helix.settings import AS_OF
+from helix.reranker import (
+    BASELINE_WEIGHTS,
+    EMBED_WEIGHTS,
+    TrainPoint,
+    binary_rel,
+    build_pairs,
+    load_qrels,
+    sklearn_check,
+    train_logistic,
+)
 
 _lora_w = EMBED_WEIGHTS.copy()
 _qlora_w = EMBED_WEIGHTS.copy()
@@ -30,27 +37,30 @@ def get_adapter_weights(kind: str) -> np.ndarray | None:
     return BASELINE_WEIGHTS
 
 
-def _build_pairs() -> list[TrainPoint]:
-    data: list[TrainPoint] = []
-    for case in GOLDEN:
-        ranked = retrieve(case.query, k=12, as_of=case.asOf, weights=EMBED_WEIGHTS)
-        rel = set(case.relevant)
-        q_up = case.query.upper()
-        for r in ranked:
-            title_hit = 1.0 if any(w in r.doc.title.lower() for w in case.query.lower().split()) else 0.0
-            ticker_hit = 1.0 if r.doc.ticker and r.doc.ticker in q_up else 0.0
-            data.append(
-                TrainPoint(
-                    features=feat(r.cosine, r.recency, ticker_hit, title_hit),
-                    y=1 if r.doc.id in rel else 0,
-                )
-            )
-    return data
+def _build_pairs(split: str = "train") -> tuple[list[TrainPoint], list[dict]]:
+    """Labelled rows for the adapters, from the qrels fixture.
+
+    This used to be `retrieve()` over `evals.GOLDEN`, which means the adapter
+    was fitted on the same 16 queries it was then scored on and the reported
+    metric was a training error wearing an eval costume. The fixture's `train`
+    split is disjoint from GOLDEN (test_reranker asserts it), and features come
+    from `rag.first_stage`, so a row cannot contain a signal the product path
+    does not compute at query time.
+    """
+    rows = [r for r in load_qrels() if str(r.get("split", "train")) == split]
+    pairs, skipped = build_pairs(rows)
+    data = [TrainPoint(features=p.features, y=binary_rel(p.rel)) for p in pairs if p.split == split]
+    return data, skipped
 
 
 def train_adapters(epochs_lora: int = 56, epochs_qlora: int = 40) -> dict:
     global _lora_w, _qlora_w, _lora_loss, _qlora_loss, _last_train_ms, _sklearn_w
-    data = _build_pairs()
+    data, skipped = _build_pairs()
+    if not data:
+        raise ValueError(
+            "no training pairs: the qrels fixture is missing or has no `train` split. "
+            "Refusing to emit a loss curve over zero rows."
+        )
     t0 = datetime.now(timezone.utc)
     import time
 
@@ -64,6 +74,8 @@ def train_adapters(epochs_lora: int = 56, epochs_qlora: int = 40) -> dict:
         "qloraLoss": _qlora_loss,
         "lastTrainMs": _last_train_ms,
         "pairs": len(data),
+        "skippedPairs": skipped,
+        "featureDim": int(data[0].features.shape[0]),
         "sklearnIntercept": float(_sklearn_w[0]),
         "trainedAt": t0.isoformat(),
     }

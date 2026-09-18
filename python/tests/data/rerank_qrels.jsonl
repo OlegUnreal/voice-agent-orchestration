@@ -1,0 +1,106 @@
+{"query": "spot exchange inflow z score distribution evidence", "docId": "R-BTC-ONCHAIN", "rel": 3, "split": "train"}
+{"query": "spot exchange inflow z score distribution evidence", "docId": "R-ANOM-WINDOW", "rel": 2, "split": "train"}
+{"query": "spot exchange inflow z score distribution evidence", "docId": "R-BTC-STRAT", "rel": 1, "split": "train"}
+{"query": "spot exchange inflow z score distribution evidence", "docId": "R-SOL-ONCHAIN", "rel": 0, "split": "train"}
+{"query": "spot exchange inflow z score distribution evidence", "docId": "R-BTC-REGIME", "rel": 0, "split": "train"}
+{"query": "funding flipped negative on perpetual futures", "docId": "R-BTC-REGIME", "rel": 3, "split": "train"}
+{"query": "funding flipped negative on perpetual futures", "docId": "R-ANOM-WINDOW", "rel": 2, "split": "train"}
+{"query": "funding flipped negative on perpetual futures", "docId": "R-ETH-STAKING", "rel": 1, "split": "train"}
+{"query": "funding flipped negative on perpetual futures", "docId": "R-ETH-REGIME", "rel": 1, "split": "train"}
+{"query": "funding flipped negative on perpetual futures", "docId": "R-AAPL-DEF", "rel": 0, "split": "train"}
+{"query": "liquid staking token discount and validator queue", "docId": "R-ETH-STAKING", "rel": 3, "split": "train"}
+{"query": "liquid staking token discount and validator queue", "docId": "R-ETH-REGIME", "rel": 1, "split": "train"}
+{"query": "liquid staking token discount and validator queue", "docId": "R-SOL-ONCHAIN", "rel": 0, "split": "train"}
+{"query": "liquid staking token discount and validator queue", "docId": "R-MCP", "rel": 0, "split": "train"}
+{"query": "walk forward validation instead of in sample sharpe", "docId": "R-SOL-MOM", "rel": 3, "split": "train"}
+{"query": "walk forward validation instead of in sample sharpe", "docId": "R-STRAT-SMA", "rel": 2, "split": "train"}
+{"query": "walk forward validation instead of in sample sharpe", "docId": "R-RAG-POLICY", "rel": 1, "split": "train"}
+{"query": "walk forward validation instead of in sample sharpe", "docId": "R-GOLDEN", "rel": 0, "split": "train"}
+{"query": "round trip transaction cost ten basis points sma crossover", "docId": "R-STRAT-SMA", "rel": 3, "split": "train"}
+{"query": "round trip transaction cost ten basis points sma crossover", "docId": "R-SOL-MOM", "rel": 2, "split": "train"}
+{"query": "round trip transaction cost ten basis points sma crossover", "docId": "R-BTC-STRAT", "rel": 1, "split": "train"}
+{"query": "round trip transaction cost ten basis points sma crossover", "docId": "R-PORT-VAR", "rel": 0, "split": "train"}
+{"query": "historical one day ninety five percent value at risk by sleeve", "docId": "R-PORT-VAR", "rel": 3, "split": "train"}
+{"query": "historical one day ninety five percent value at risk by sleeve", "docId": "R-PORT-REVIEW", "rel": 2, "split": "train"}
+{"query": "historical one day ninety five percent value at risk by sleeve", "docId": "R-AAPL-DEF", "rel": 1, "split": "train"}
+{"query": "historical one day ninety five percent value at risk by sleeve", "docId": "R-CITATION", "rel": 0, "split": "train"}
+{"query": "negative twelve percent bitcoin shock scenario pnl", "docId": "R-PORT-VAR", "rel": 3, "split": "train"}
+{"query": "negative twelve percent bitcoin shock scenario pnl", "docId": "R-PORT-REVIEW", "rel": 2, "split": "train"}
+{"query": "negative twelve percent bitcoin shock scenario pnl", "docId": "R-BTC-REGIME", "rel": 1, "split": "train"}
+{"query": "negative twelve percent bitcoin shock scenario pnl", "docId": "R-AAPL-DEF", "rel": 1, "split": "train"}
+{"query": "negative twelve percent bitcoin shock scenario pnl", "docId": "R-MCP", "rel": 0, "split": "train"}
+{"query": "implied volatility crush after an earnings print", "docId": "R-NVDA-EARN", "rel": 3, "split": "train"}
+{"query": "implied volatility crush after an earnings print", "docId": "R-BTC-REGIME", "rel": 1, "split": "train"}
+{"query": "implied volatility crush after an earnings print", "docId": "R-AAPL-DEF", "rel": 0, "split": "train"}
+{"query": "implied volatility crush after an earnings print", "docId": "R-STRAT-SMA", "rel": 0, "split": "train"}
+{"query": "low correlation large cap equity as volatility ballast", "docId": "R-AAPL-DEF", "rel": 3, "split": "train"}
+{"query": "low correlation large cap equity as volatility ballast", "docId": "R-PORT-VAR", "rel": 2, "split": "train"}
+{"query": "low correlation large cap equity as volatility ballast", "docId": "R-PORT-REVIEW", "rel": 1, "split": "train"}
+{"query": "low correlation large cap equity as volatility ballast", "docId": "R-BTC-ONCHAIN", "rel": 0, "split": "train"}
+{"query": "fifty and two hundred day sma spread compression bitcoin", "docId": "R-BTC-REGIME", "rel": 3, "split": "train"}
+{"query": "fifty and two hundred day sma spread compression bitcoin", "docId": "R-STRAT-SMA", "rel": 2, "split": "train"}
+{"query": "fifty and two hundred day sma spread compression bitcoin", "docId": "R-SOL-MOM", "rel": 1, "split": "train"}
+{"query": "fifty and two hundred day sma spread compression bitcoin", "docId": "R-ETH-REGIME", "rel": 1, "split": "train"}
+{"query": "covered call overlay versus a naked long position", "docId": "R-NVDA-EARN", "rel": 3, "split": "train"}
+{"query": "covered call overlay versus a naked long position", "docId": "R-AAPL-DEF", "rel": 1, "split": "train"}
+{"query": "covered call overlay versus a naked long position", "docId": "R-PORT-VAR", "rel": 0, "split": "train"}
+{"query": "empirical beta book loss under a designed stress", "docId": "R-PORT-VAR", "rel": 3, "split": "train"}
+{"query": "empirical beta book loss under a designed stress", "docId": "R-AAPL-DEF", "rel": 2, "split": "train"}
+{"query": "empirical beta book loss under a designed stress", "docId": "R-ANOM-WINDOW", "rel": 1, "split": "train"}
+{"query": "empirical beta book loss under a designed stress", "docId": "R-BTC-STRAT", "rel": 0, "split": "train"}
+{"query": "structured output checklist for a discretionary tilt", "docId": "R-PORT-REVIEW", "rel": 3, "split": "train"}
+{"query": "structured output checklist for a discretionary tilt", "docId": "R-CITATION", "rel": 2, "split": "train"}
+{"query": "structured output checklist for a discretionary tilt", "docId": "R-MCP", "rel": 1, "split": "train"}
+{"query": "structured output checklist for a discretionary tilt", "docId": "R-STRAT-SMA", "rel": 0, "split": "train"}
+{"query": "regression suite re run on every candidate checkpoint", "docId": "R-GOLDEN", "rel": 3, "split": "train"}
+{"query": "regression suite re run on every candidate checkpoint", "docId": "R-PROMOTE", "rel": 2, "split": "train"}
+{"query": "regression suite re run on every candidate checkpoint", "docId": "R-RAG-POLICY", "rel": 1, "split": "train"}
+{"query": "regression suite re run on every candidate checkpoint", "docId": "R-SOL-ONCHAIN", "rel": 0, "split": "train"}
+{"query": "eth perps near flat so leverage is not crowded long", "docId": "R-ETH-STAKING", "rel": 3, "split": "train"}
+{"query": "eth perps near flat so leverage is not crowded long", "docId": "R-ETH-REGIME", "rel": 2, "split": "train"}
+{"query": "eth perps near flat so leverage is not crowded long", "docId": "R-BTC-REGIME", "rel": 1, "split": "train"}
+{"query": "eth perps near flat so leverage is not crowded long", "docId": "R-AAPL-DEF", "rel": 0, "split": "train"}
+{"query": "volume z impulse days before a mean reversion entry", "docId": "R-SOL-MOM", "rel": 2, "split": "train"}
+{"query": "volume z impulse days before a mean reversion entry", "docId": "R-BTC-STRAT", "rel": 2, "split": "train"}
+{"query": "volume z impulse days before a mean reversion entry", "docId": "R-ANOM-WINDOW", "rel": 1, "split": "train"}
+{"query": "volume z impulse days before a mean reversion entry", "docId": "R-BTC-ONCHAIN", "rel": 1, "split": "train"}
+{"query": "which claims need a tool citation in a spoken answer", "docId": "R-CITATION", "rel": 3, "split": "holdout"}
+{"query": "which claims need a tool citation in a spoken answer", "docId": "R-RAG-POLICY", "rel": 2, "split": "holdout"}
+{"query": "which claims need a tool citation in a spoken answer", "docId": "R-GOLDEN", "rel": 1, "split": "holdout"}
+{"query": "which claims need a tool citation in a spoken answer", "docId": "R-MCP", "rel": 0, "split": "holdout"}
+{"query": "staging shadow canary production promotion criteria", "docId": "R-PROMOTE", "rel": 3, "split": "holdout"}
+{"query": "staging shadow canary production promotion criteria", "docId": "R-GOLDEN", "rel": 2, "split": "holdout"}
+{"query": "staging shadow canary production promotion criteria", "docId": "R-STRAT-SMA", "rel": 1, "split": "holdout"}
+{"query": "staging shadow canary production promotion criteria", "docId": "R-MCP", "rel": 1, "split": "holdout"}
+{"query": "market retrieval and eval tool servers exposed over mcp", "docId": "R-MCP", "rel": 3, "split": "holdout"}
+{"query": "market retrieval and eval tool servers exposed over mcp", "docId": "R-RAG-POLICY", "rel": 1, "split": "holdout"}
+{"query": "market retrieval and eval tool servers exposed over mcp", "docId": "R-CITATION", "rel": 0, "split": "holdout"}
+{"query": "twenty day realized vol percentile regime label", "docId": "R-BTC-REGIME", "rel": 3, "split": "holdout"}
+{"query": "twenty day realized vol percentile regime label", "docId": "R-ETH-REGIME", "rel": 2, "split": "holdout"}
+{"query": "twenty day realized vol percentile regime label", "docId": "R-NVDA-EARN", "rel": 1, "split": "holdout"}
+{"query": "twenty day realized vol percentile regime label", "docId": "R-AAPL-DEF", "rel": 0, "split": "holdout"}
+{"query": "spot demand pulse confirmed by active addresses", "docId": "R-BTC-ONCHAIN", "rel": 3, "split": "holdout"}
+{"query": "spot demand pulse confirmed by active addresses", "docId": "R-SOL-ONCHAIN", "rel": 2, "split": "holdout"}
+{"query": "spot demand pulse confirmed by active addresses", "docId": "R-BTC-REGIME", "rel": 1, "split": "holdout"}
+{"query": "mean drawdown clustered in the high vol window", "docId": "R-STRAT-SMA", "rel": 3, "split": "holdout"}
+{"query": "mean drawdown clustered in the high vol window", "docId": "R-BTC-REGIME", "rel": 2, "split": "holdout"}
+{"query": "mean drawdown clustered in the high vol window", "docId": "R-ANOM-WINDOW", "rel": 2, "split": "holdout"}
+{"query": "mean drawdown clustered in the high vol window", "docId": "R-AAPL-DEF", "rel": 0, "split": "holdout"}
+{"query": "mean reversion fade during the first two days of stress", "docId": "R-BTC-STRAT", "rel": 3, "split": "golden"}
+{"query": "mean reversion fade during the first two days of stress", "docId": "R-ANOM-WINDOW", "rel": 2, "split": "golden"}
+{"query": "mean reversion fade during the first two days of stress", "docId": "R-BTC-ONCHAIN", "rel": 2, "split": "golden"}
+{"query": "mean reversion fade during the first two days of stress", "docId": "R-STRAT-SMA", "rel": 1, "split": "golden"}
+{"query": "chronological masking of future documents during evaluation", "docId": "R-RAG-POLICY", "rel": 3, "split": "golden"}
+{"query": "chronological masking of future documents during evaluation", "docId": "R-SOL-MOM", "rel": 2, "split": "golden"}
+{"query": "chronological masking of future documents during evaluation", "docId": "R-ANOM-WINDOW", "rel": 1, "split": "golden"}
+{"query": "chronological masking of future documents during evaluation", "docId": "R-GOLDEN", "rel": 1, "split": "golden"}
+{"query": "solana active addresses uptrend and fee burn", "docId": "R-SOL-ONCHAIN", "rel": 3, "split": "golden"}
+{"query": "solana active addresses uptrend and fee burn", "docId": "R-SOL-MOM", "rel": 2, "split": "golden"}
+{"query": "solana active addresses uptrend and fee burn", "docId": "R-BTC-ONCHAIN", "rel": 1, "split": "golden"}
+{"query": "solana active addresses uptrend and fee burn", "docId": "R-ETH-STAKING", "rel": 0, "split": "golden"}
+{"query": "wait for vol contraction then re enter with confirmation", "docId": "R-BTC-STRAT", "rel": 3, "split": "golden"}
+{"query": "wait for vol contraction then re enter with confirmation", "docId": "R-BTC-REGIME", "rel": 2, "split": "golden"}
+{"query": "wait for vol contraction then re enter with confirmation", "docId": "R-STRAT-SMA", "rel": 1, "split": "golden"}
+{"query": "every numerical claim tied to a snapshot or retrieved evidence", "docId": "R-CITATION", "rel": 3, "split": "golden"}
+{"query": "every numerical claim tied to a snapshot or retrieved evidence", "docId": "R-RAG-POLICY", "rel": 1, "split": "golden"}
+{"query": "every numerical claim tied to a snapshot or retrieved evidence", "docId": "R-PORT-REVIEW", "rel": 1, "split": "golden"}

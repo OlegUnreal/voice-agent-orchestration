@@ -23,7 +23,7 @@ Intent = Literal[
 AgentId = Literal["supervisor", "quant", "research", "copilot", "eval", "training"]
 PromotionStage = Literal["staging", "shadow", "canary", "production"]
 DocType = Literal["research", "onchain", "strategy", "risk", "event"]
-RetrieverKind = Literal["lexical", "embed", "lora"]
+RetrieverKind = Literal["overlap", "lexical", "dense", "hybrid", "blend", "embed", "lora", "qlora", "baseline"]
 
 
 class Bar(BaseModel):
@@ -115,7 +115,10 @@ class RetrievedDoc(BaseModel):
     cosine: float
     recency: float
     rerank: float | None = None
+    lexical: float | None = None
+    rrf: float | None = None
     snippet: str | None = None
+    breakdown: dict[str, float] | None = None
 
 
 class Citation(BaseModel):
