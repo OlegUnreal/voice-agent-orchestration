@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0 — 2026-09-18
+
+- **A/B testing framework** (`ab_test.py`, `POST /v1/ab-test`): compare two reranker variants (e.g. `lora` vs `hybrid`) on the golden eval set with deterministic hash-based assignment. Paired permutation test on MRR (200 permutations) reports whether the difference is statistically significant. Results logged to `experiments.jsonl` for MLflow-style tracking. No scipy dependency.
+- Suite 49 passing, 1 skipped (pgvector profile).
+
 ## 0.7.0 — 2026-09-18
 
 - **Model drift detection** (`drift.py`, `GET /v1/drift`): three-category monitoring — metric drift (golden-set eval vs historical experiment runs), serving drift (TTFT/failure rate/tokens per query, recent window vs baseline), input drift (query length distribution + intent mix shift). Z-test for mean shift with 2σ threshold, no scipy dependency. Returns `anyDrift` flag plus per-category detail.

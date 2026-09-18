@@ -75,3 +75,15 @@ def test_drift_endpoint():
     assert "input" in body
     assert "anyDrift" in body
     assert "ts" in body
+
+
+def test_ab_test_endpoint():
+    r = client.post("/v1/ab-test", json={"kindA": "lora", "kindB": "hybrid", "seed": 42})
+    assert r.status_code == 200
+    body = r.json()
+    assert "variantA" in body
+    assert "variantB" in body
+    assert "significance" in body
+    assert "assignments" in body
+    assert body["variantA"]["kind"] == "lora"
+    assert body["variantB"]["kind"] == "hybrid"

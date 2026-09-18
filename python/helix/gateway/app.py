@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from helix.evals import GOLDEN, dataset_version, gate_check, run_eval_suite
 from helix.drift import drift_report
+from helix.ab_test import run_ab_test
 from helix.gateway.cache import TtlCache
 from helix.market import (
     all_snapshots,
@@ -295,6 +296,22 @@ def drift() -> dict[str, Any]:
     Flags metrics where current value is >2σ from historical mean.
     """
     return drift_report()
+
+
+class ABTestRequest(BaseModel):
+    kindA: str = "lora"
+    kindB: str = "hybrid"
+    seed: int = 0
+
+
+@app.post("/v1/ab-test")
+def ab_test(req: ABTestRequest) -> dict[str, Any]:
+    """A/B test between two reranker variants over the golden set.
+
+    Deterministic assignment by case ID hash. Returns per-variant metrics,
+    per-case assignment, and paired permutation test significance (p < 0.05).
+    """
+    return run_ab_test(kind_a=req.kindA, kind_b=req.kindB, seed=req.seed)
 
 
 class NarrateRequest(BaseModel):

@@ -255,6 +255,7 @@ Default install stays CPU-only (`pip install -e ".[dev]"`). Heavier résumé too
 | Multi-tier reranking (fast/accurate/fine-tuned) | [`finetuned_reranker.py`](python/helix/finetuned_reranker.py), [`train_finetuned.py`](python/helix/train_finetuned.py) | Production systems need to ship today and improve tomorrow. Three tiers: sklearn (1ms, interpretable), HF CrossEncoder (50ms, off-the-shelf), PyTorch BERT fine-tuned on domain data (50ms, domain-adapted). Operator picks via `HELIX_RERANKER_TIER`. Model weights gitignored; metadata committed | `[train]` + GPU for fine-tuned tier; fast/accurate work without |
 | SSE / WebSocket streaming | [`gateway/app.py`](python/helix/gateway/app.py) `/v1/turn/stream`, `/v1/ws/turn` | Voice UIs cannot wait for a full response before starting TTS. SSE streams spoken chunks progressively; WebSocket adds full-duplex for barge-in and interrupt handling. Same orchestrator, different transport | default |
 | Model drift detection | [`drift.py`](python/helix/drift.py), `GET /v1/drift` | Deploy a new reranker and nobody notices nDCG dropped 15 points until a user complains. Three-category monitoring: metric (golden eval vs historical), serving (TTFT/failure rate/tokens), input (query length + intent mix). Z-test with 2σ threshold, no scipy dependency | default |
+| A/B testing for rerankers | [`ab_test.py`](python/helix/ab_test.py), `POST /v1/ab-test` | "Is the new reranker actually better?" requires a statistical test, not a vibes comparison. Deterministic hash-based assignment, paired permutation test on MRR (200 permutations), results logged to experiments.jsonl. No scipy dependency | default |
 | SFT / LoRA / QLoRA / PEFT | [`finetune.py`](python/helix/finetune.py) | Mouth still rented (Grok) until you train. Export is real TRL JSONL; **weights stay in helix-live** | `[train]` + GPU; `helix finetune` is export-only without CUDA |
 | vLLM | `HELIX_VLLM_URL` + compose profile `vllm` | API p95 and offline copilot **after** you have weights. Empty vLLM is décor — profile is opt-in | GPU |
 | EvalForge gates | [`evals.py`](python/helix/evals.py) + `helix redteam` | Prompt drift, jailbreaks, invented VaR | default |
@@ -282,7 +283,7 @@ PEFT: `helix finetune` writes `data/trl/sft.jsonl` and `dpo.jsonl`. Training a Q
 | RAG + chronological eval | Hashing 64-d default; MiniLM/cross-encoder optional |
 | SFT / LoRA / QLoRA | Flywheel + TRL export; logistic probe on CPU; PEFT on GPU extra |
 | AI gateway / copilot | FastAPI, cache, structured JSON speech, vLLM/xAI routing, SSE + WebSocket streaming |
-| EvalForge / registry | Golden nDCG + serving TTFT/cost + experiments.jsonl + redteam |
+| EvalForge / registry | Golden nDCG + serving TTFT/cost + experiments.jsonl + redteam + drift detection + A/B testing |
 | MCP | Real Streamable HTTP client + local JSON-RPC `/mcp` |
 | LangGraph | Write-gate graph, not LLM-picked tools |
 | pgvector / vLLM | Wired, profiled in Compose, off until you opt in |
