@@ -154,6 +154,16 @@ sequenceDiagram
 
 A specialist is a **tool-selection policy**, not a second language model.
 
+### Streaming for voice UIs
+
+`POST /v1/turn` is request/response — simple integrations, server-side scripts, tests. Voice UIs need progressive rendering: start TTS before the orchestrator finishes, show tools as they fire, handle barge-in. Two endpoints for that:
+
+**SSE** (`POST /v1/turn/stream`): same body as `/v1/turn`, returns `text/event-stream`. Events arrive in phases — `thinking`, `tool`, `spoken` (chunked at 50 chars for streaming TTS), `citation`, `done` — each JSON with `elapsed_ms`. The voice UI connects an `EventSource`-style reader and pipes `spoken` chunks to TTS as they arrive.
+
+**WebSocket** (`WS /v1/ws/turn`): bidirectional JSON. Client sends `{"text": "..."}`, server streams the same phase protocol. Full-duplex: the UI can send an interrupt mid-stream and the server stops the current response. This is the path for real-time voice agents that need sub-100ms interaction.
+
+Both share the orchestrator pipeline with `/v1/turn` — no separate code path, no separate cache. Pick the transport, not the logic.
+
 ### Agents
 
 | Agent | Intents | Tools |
@@ -243,6 +253,7 @@ Default install stays CPU-only (`pip install -e ".[dev]"`). Heavier résumé too
 | Hybrid retrieval (BM25 + RRF) | [`bm25.py`](python/helix/bm25.py) | Token-overlap scoring has no saturation and no IDF, and raw-score blending mixes incomparable scales. Okapi BM25 fixes term weighting; RRF (Cormack et al., SIGIR 2009) fuses on rank, not score | default |
 | RankNet reranker + acceptance gate | [`reranker.py`](python/helix/reranker.py) | A fitted reranker that loses to a hand prior still ships in most demos. Here C is picked by query-grouped CV inside the train split, the holdout is read only by the gate, and a losing artifact degrades to the prior with the reason on record | default |
 | Multi-tier reranking (fast/accurate/fine-tuned) | [`finetuned_reranker.py`](python/helix/finetuned_reranker.py), [`train_finetuned.py`](python/helix/train_finetuned.py) | Production systems need to ship today and improve tomorrow. Three tiers: sklearn (1ms, interpretable), HF CrossEncoder (50ms, off-the-shelf), PyTorch BERT fine-tuned on domain data (50ms, domain-adapted). Operator picks via `HELIX_RERANKER_TIER`. Model weights gitignored; metadata committed | `[train]` + GPU for fine-tuned tier; fast/accurate work without |
+| SSE / WebSocket streaming | [`gateway/app.py`](python/helix/gateway/app.py) `/v1/turn/stream`, `/v1/ws/turn` | Voice UIs cannot wait for a full response before starting TTS. SSE streams spoken chunks progressively; WebSocket adds full-duplex for barge-in and interrupt handling. Same orchestrator, different transport | default |
 | SFT / LoRA / QLoRA / PEFT | [`finetune.py`](python/helix/finetune.py) | Mouth still rented (Grok) until you train. Export is real TRL JSONL; **weights stay in helix-live** | `[train]` + GPU; `helix finetune` is export-only without CUDA |
 | vLLM | `HELIX_VLLM_URL` + compose profile `vllm` | API p95 and offline copilot **after** you have weights. Empty vLLM is décor — profile is opt-in | GPU |
 | EvalForge gates | [`evals.py`](python/helix/evals.py) + `helix redteam` | Prompt drift, jailbreaks, invented VaR | default |
@@ -269,7 +280,7 @@ PEFT: `helix finetune` writes `data/trl/sft.jsonl` and `dpo.jsonl`. Training a Q
 | Quant / market intelligence | Demo GBM tape + live MCP when `HELIX_MCP_URL` is set |
 | RAG + chronological eval | Hashing 64-d default; MiniLM/cross-encoder optional |
 | SFT / LoRA / QLoRA | Flywheel + TRL export; logistic probe on CPU; PEFT on GPU extra |
-| AI gateway / copilot | FastAPI, cache, structured JSON speech, vLLM/xAI routing |
+| AI gateway / copilot | FastAPI, cache, structured JSON speech, vLLM/xAI routing, SSE + WebSocket streaming |
 | EvalForge / registry | Golden nDCG + serving TTFT/cost + experiments.jsonl + redteam |
 | MCP | Real Streamable HTTP client + local JSON-RPC `/mcp` |
 | LangGraph | Write-gate graph, not LLM-picked tools |

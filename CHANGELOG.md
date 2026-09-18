@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0 — 2026-09-18
+
+- **SSE streaming endpoint** (`POST /v1/turn/stream`): Server-Sent Events for progressive voice-UI rendering. Streams response in phases — `thinking` → `tool` → `spoken` (chunked for streaming TTS) → `citation` → `done` — each event is JSON with `type` and `elapsed_ms`. Voice UIs start TTS before the orchestrator finishes.
+- **WebSocket endpoint** (`WS /v1/ws/turn`): bidirectional JSON for real-time voice-agent communication. Client sends `{"text": "..."}`, server streams the same phase protocol as SSE. Full-duplex: supports interrupt handling and barge-in for voice UIs that need it.
+- Both endpoints share the orchestrator pipeline with `POST /v1/turn` — no separate code path, no separate cache. The existing request/response endpoint stays the default for simple integrations.
+- Suite 47 passing, 1 skipped (pgvector profile).
+
 ## 0.5.0 — 2026-09-18
 
 - **Multi-tier reranking strategy**: production systems need to ship today and improve tomorrow without rewriting the pipeline. Helix resolves reranking in three tiers, selected by `HELIX_RERANKER_TIER` env var:

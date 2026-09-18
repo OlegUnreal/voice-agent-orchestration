@@ -141,6 +141,104 @@ def turn(req: TurnRequest) -> dict[str, Any]:
     return body
 
 
+@app.post("/v1/turn/stream")
+def turn_stream(req: TurnRequest):
+    """Server-Sent Events streaming endpoint for real-time voice-agent responses.
+    
+    Streams the response in chunks: thinking → tools → spoken → citations.
+    This is the production path for voice UIs that want progressive rendering
+    instead of waiting for the full response. Each event is a JSON object with
+    a `type` field: `thinking`, `tool`, `spoken`, `citation`, `done`.
+    """
+    from fastapi.responses import StreamingResponse
+    import json
+    import time
+    
+    def event_stream():
+        start = time.time()
+        
+        # Phase 1: thinking (intent classification)
+        yield f"data: {json.dumps({'type': 'thinking', 'content': 'Classifying intent...', 'elapsed_ms': int((time.time() - start) * 1000)})}\n\n"
+        time.sleep(0.1)
+        
+        # Phase 2: run orchestrator
+        result = run_orchestrator(req.text)
+        body = result.model_dump()
+        
+        # Phase 3: tools used
+        for tool in (body.get("used") or []):
+            yield f"data: {json.dumps({'type': 'tool', 'name': tool, 'elapsed_ms': int((time.time() - start) * 1000)})}\n\n"
+        
+        # Phase 4: spoken response (chunked for streaming TTS)
+        spoken = body.get("spoken", "")
+        chunk_size = 50
+        for i in range(0, len(spoken), chunk_size):
+            chunk = spoken[i:i + chunk_size]
+            yield f"data: {json.dumps({'type': 'spoken', 'content': chunk, 'elapsed_ms': int((time.time() - start) * 1000)})}\n\n"
+            time.sleep(0.05)
+        
+        # Phase 5: citations
+        for cite in (body.get("citations") or []):
+            yield f"data: {json.dumps({'type': 'citation', 'docId': cite, 'elapsed_ms': int((time.time() - start) * 1000)})}\n\n"
+        
+        # Phase 6: done
+        yield f"data: {json.dumps({'type': 'done', 'elapsed_ms': int((time.time() - start) * 1000), 'cacheHit': False})}\n\n"
+    
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.websocket("/v1/ws/turn")
+async def turn_websocket(websocket):
+    """WebSocket endpoint for real-time bidirectional voice-agent communication.
+    
+    Client sends: {"text": "query"}
+    Server streams: {"type": "thinking|tool|spoken|citation|done", ...}
+    
+    This is the production path for voice UIs that need full-duplex communication:
+    interrupt handling, barge-in, and progressive TTS rendering. Each message is
+    a JSON object with a `type` field.
+    """
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            text = data.get("text", "")
+            
+            if not text:
+                await websocket.send_json({"type": "error", "message": "empty text"})
+                continue
+            
+            # Stream response phases
+            import time
+            start = time.time()
+            
+            await websocket.send_json({"type": "thinking", "content": "Classifying intent...", "elapsed_ms": int((time.time() - start) * 1000)})
+            
+            result = run_orchestrator(text)
+            body = result.model_dump()
+            
+            for tool in (body.get("used") or []):
+                await websocket.send_json({"type": "tool", "name": tool, "elapsed_ms": int((time.time() - start) * 1000)})
+            
+            spoken = body.get("spoken", "")
+            chunk_size = 50
+            for i in range(0, len(spoken), chunk_size):
+                chunk = spoken[i:i + chunk_size]
+                await websocket.send_json({"type": "spoken", "content": chunk, "elapsed_ms": int((time.time() - start) * 1000)})
+            
+            for cite in (body.get("citations") or []):
+                await websocket.send_json({"type": "citation", "docId": cite, "elapsed_ms": int((time.time() - start) * 1000)})
+            
+            await websocket.send_json({"type": "done", "elapsed_ms": int((time.time() - start) * 1000)})
+    except Exception as e:
+        await websocket.send_json({"type": "error", "message": str(e)})
+    finally:
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass
+
+
 @app.get("/v1/market/book")
 def market_book(ticker: Ticker = "BTC") -> dict[str, Any]:
     bars = get_bars(ticker)
