@@ -1,0 +1,12 @@
+{
+  "base_model": "distilbert-base-uncased",
+  "epochs": 3,
+  "batch_size": 8,
+  "lr": 2e-05,
+  "train_size": 66,
+  "val_size": 22,
+  "best_val_loss": 0.12588024884462357,
+  "training_time_sec": 7.411339282989502,
+  "device": "cuda",
+  "seed": 42
+}

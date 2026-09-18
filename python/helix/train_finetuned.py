@@ -45,8 +45,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from helix.corpus import CORPUS
 from helix.reranker import QRELS_PATH
 
-MODEL_PATH = Path(__file__).resolve().parent / "helix" / "finetuned_reranker.pt"
-META_PATH = Path(__file__).resolve().parent / "helix" / "finetuned_reranker.meta.json"
+MODEL_PATH = Path(__file__).resolve().parent / "finetuned_reranker.pt"
+META_PATH = Path(__file__).resolve().parent / "finetuned_reranker.meta.json"
 
 
 def load_qrels() -> list[dict]:
@@ -85,7 +85,7 @@ def train(args: argparse.Namespace) -> dict:
     
     rows = load_qrels()
     train_rows = [r for r in rows if r["split"] == "train"]
-    val_rows = [r for r in rows if r["split"] == "test"]
+    val_rows = [r for r in rows if r["split"] == "holdout"]
     
     print(f"Train: {len(train_rows)}, Val: {len(val_rows)}")
     
@@ -103,7 +103,7 @@ def train(args: argparse.Namespace) -> dict:
         def __getitem__(self, idx):
             r = self.rows[idx]
             text = f"{r['query']} [SEP] {r['title']} {r['body']}"
-            enc = tokenizer(text, truncation=True, max_length=256, return_tensors="pt")
+            enc = tokenizer(text, truncation=True, max_length=256, padding="max_length", return_tensors="pt")
             return {
                 "input_ids": enc["input_ids"].squeeze(),
                 "attention_mask": enc["attention_mask"].squeeze(),
