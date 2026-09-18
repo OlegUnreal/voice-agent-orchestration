@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: helix-config
+  namespace: helix
+data:
+  HELIX_EMBEDDINGS: "hash"
+  HELIX_PORT: "8090"
+  HELIX_HOST: "0.0.0.0"
+  # Set HELIX_MCP_URL to your live MCP server (optional)
+  # HELIX_MCP_URL: "http://mcp-server:9000"
+  # Set HELIX_ALLOW_SIMULATOR=false for production (dead MCP = silence)
+  HELIX_ALLOW_SIMULATOR: "true"
+  # Optional: local vLLM narrator
+  # HELIX_VLLM_URL: "http://vllm:8000/v1"
+  # Optional: PostgreSQL + pgvector
+  # DATABASE_URL: "postgresql://helix:helix@postgres:5432/helix"

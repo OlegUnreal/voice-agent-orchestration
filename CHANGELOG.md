@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.0 — 2026-09-18
+
+- **Kubernetes manifests** (`k8s/`): namespace, configmap, secret, deployment (engines + web), service, PVC, HPA. 2-10 replicas for engines, 2 for web. Readiness/liveness probes on `/health`. PVC for traces and memory. HPA scales on CPU/memory. Honest about what's wired vs what's proven.
+- Suite 50 passing, 1 skipped (pgvector profile).
+
 ## 0.10.0 — 2026-09-18
 
 - **Distributed training** (`train_distributed.py`): PyTorch DDP for fine-tuned BERT reranker. Multi-GPU with `torchrun`, DistributedSampler for data sharding, gradients averaged via all-reduce. Single-node and multi-node configs documented. Only rank 0 saves model and metadata. Effective batch size = per-GPU batch × world_size.
