@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0 — 2026-09-18
+
+- **Distributed training** (`train_distributed.py`): PyTorch DDP for fine-tuned BERT reranker. Multi-GPU with `torchrun`, DistributedSampler for data sharding, gradients averaged via all-reduce. Single-node and multi-node configs documented. Only rank 0 saves model and metadata. Effective batch size = per-GPU batch × world_size.
+- Suite 50 passing, 1 skipped (pgvector profile).
+
 ## 0.9.0 — 2026-09-18
 
 - **Performance dashboard** (`dashboard.py`, `GET /v1/dashboard`): single-pane ops view aggregating serving (TTFT/failure/tokens/cost), eval (golden set metrics + gates), drift (metric/serving/input), and recent experiments. Returns `health` status (green/yellow/red) based on gate failures, drift flags, and serving failure rate. Suitable for Grafana panels, Slack webhooks, or CLI summaries.
