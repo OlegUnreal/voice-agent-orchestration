@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.0 — 2026-09-18
+
+- **TorchServe model serving** (`serving/`): production-grade model serving for the fine-tuned BERT reranker. Custom handler (`torchserve_handler.py`) with preprocess/inference/postprocess. Config with batching (batch_size=8, max_batch_delay=100ms), worker management, metrics API. Shell script to package and serve. Honest about what's wired vs what's proven.
+- Suite 50 passing, 1 skipped (pgvector profile).
+
 ## 0.11.0 — 2026-09-18
 
 - **Kubernetes manifests** (`k8s/`): namespace, configmap, secret, deployment (engines + web), service, PVC, HPA. 2-10 replicas for engines, 2 for web. Readiness/liveness probes on `/health`. PVC for traces and memory. HPA scales on CPU/memory. Honest about what's wired vs what's proven.
