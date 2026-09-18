@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 — 2026-09-18
+
+- **Multi-tier reranking strategy**: production systems need to ship today and improve tomorrow without rewriting the pipeline. Helix resolves reranking in three tiers, selected by `HELIX_RERANKER_TIER` env var:
+  1. **Fast tier** (default): RankNet pairwise logistic probe on 9 hand-crafted features (`reranker.py`). ~1ms inference, interpretable weights, CPU-only.
+  2. **Accurate tier** (`HELIX_RERANKER_TIER=accurate`): HF CrossEncoder pre-trained on MS-MARCO (`cross_encoder.py`). ~50ms inference, black-box, requires `sentence-transformers`.
+  3. **Fine-tuned tier** (`HELIX_RERANKER_TIER=finetuned`): PyTorch BERT fine-tuned on domain qrels (`finetuned_reranker.py`, `train_finetuned.py`). ~50ms inference, domain-adapted for financial jargon and ticker symbols. Requires PyTorch + GPU for training (RTX 2060 6GB sufficient for DistilBERT).
+- Fine-tuned reranker training script (`train_finetuned.py`): fine-tune DistilBERT on the same qrels as the sklearn tier, but learns end-to-end from raw text. Model weights gitignored; only metadata and metrics committed.
+- `rag.py` updated to route through the multi-tier strategy based on operator configuration. All three tiers share the same first-stage candidate set.
+- Docs: README Grounding section rewritten to explain the multi-tier strategy as an architectural decision, not a demo. Problems table extended with the new row.
+- Suite 47 passing, 1 skipped (pgvector profile).
+
 ## 0.4.0 — 2026-09-18
 
 - Hybrid retrieval: hand-rolled Okapi BM25 (`bm25.py`) — saturation, IDF, explicit length normalisation — with the old token-overlap scorer kept as a documented baseline; dense cosine + BM25 fused by reciprocal rank fusion (Cormack et al., SIGIR 2009) instead of incomparable raw-score blending.

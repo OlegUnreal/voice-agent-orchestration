@@ -255,9 +255,23 @@ def retrieve(
         rows.sort(key=lambda r: (-r.score, order.get(r.doc.id, 1 << 30)))
     else:
         rows.sort(key=lambda r: (-r.score, r.doc.id))
-    from helix.cross_encoder import rerank as ce_rerank
-
-    return ce_rerank(query, rows[: max(k, 12)], top=k)
+    
+    # Multi-tier reranking: pick the tier based on HELIX_RERANKER_TIER env var.
+    # fast (default): sklearn logistic probe on hand-crafted features (above)
+    # accurate: HF CrossEncoder pre-trained on MS-MARCO
+    # finetuned: PyTorch BERT fine-tuned on domain qrels
+    import os
+    tier = os.environ.get("HELIX_RERANKER_TIER", "fast").lower()
+    
+    if tier == "finetuned":
+        from helix.finetuned_reranker import rerank as ft_rerank
+        return ft_rerank(query, rows[: max(k, 12)], top=k)
+    elif tier == "accurate":
+        from helix.cross_encoder import rerank as ce_rerank
+        return ce_rerank(query, rows[: max(k, 12)], top=k)
+    else:
+        # fast tier: already reranked above with sklearn, return as-is
+        return rows[:k]
 
 
 def hybrid_retrieve(

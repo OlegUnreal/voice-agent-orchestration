@@ -192,7 +192,17 @@ Local registry: [`python/helix/mcp.py`](python/helix/mcp.py). Live catalog: Stre
 
 A turn is `grounded` when citations exist, a quant tool fired, live MCP returned payload, or memory wrote/recalled — **and** the verifier passed.
 
-RAG: hybrid — dense cosine + Okapi BM25 ([`bm25.py`](python/helix/bm25.py)) fused by reciprocal rank fusion, plus ticker/title hit, 14-day recency, and a chronological mask (`doc.ts > asOf` dropped). Rerank is a RankNet pairwise logistic probe (LoRA-**style**, not PEFT on an LLM) with an acceptance gate: `python -m helix.reranker --fit` writes [`rerank_model.json`](python/helix/rerank_model.json) and the runtime ships it **only if it beats the hand-set prior on holdout nDCG@5** — a rejected artifact falls back to the prior with the reason recorded, never silently.
+RAG: hybrid — dense cosine + Okapi BM25 ([`bm25.py`](python/helix/bm25.py)) fused by reciprocal rank fusion, plus ticker/title hit, 14-day recency, and a chronological mask (`doc.ts > asOf` dropped).
+
+**Multi-tier reranking strategy** — production systems need to ship today and improve tomorrow without rewriting the pipeline. Helix resolves reranking in three tiers, selected by `HELIX_RERANKER_TIER` env var:
+
+1. **Fast tier** (default): RankNet pairwise logistic probe on 9 hand-crafted features ([`reranker.py`](python/helix/reranker.py)). ~1ms inference, interpretable weights, CPU-only. Acceptance gate: `python -m helix.reranker --fit` writes [`rerank_model.json`](python/helix/rerank_model.json) and the runtime ships it **only if it beats the hand-set prior on holdout nDCG@5** — a rejected artifact falls back to the prior with the reason recorded, never silently.
+
+2. **Accurate tier** (`HELIX_RERANKER_TIER=accurate`): HF CrossEncoder pre-trained on MS-MARCO ([`cross_encoder.py`](python/helix/cross_encoder.py)). ~50ms inference, black-box, requires `sentence-transformers`. Off-the-shelf quality for general domains.
+
+3. **Fine-tuned tier** (`HELIX_RERANKER_TIER=finetuned`): PyTorch BERT fine-tuned on domain qrels ([`finetuned_reranker.py`](python/helix/finetuned_reranker.py), [`train_finetuned.py`](python/helix/train_finetuned.py)). ~50ms inference, domain-adapted for financial jargon and ticker symbols. Requires PyTorch + GPU for training (RTX 2060 6GB sufficient for DistilBERT). Model weights are gitignored; only metadata and metrics are committed.
+
+This is not a demo — it is a production strategy where each tier solves a different problem: fast for latency, accurate for off-the-shelf quality, fine-tuned for domain-specific patterns. The runtime picks the tier based on operator configuration, and all three share the same first-stage candidate set.
 
 After optional Grok narration, [`POST /v1/verify`](python/helix/gateway/app.py) runs again. Leaked numbers never reach TTS.
 
@@ -232,6 +242,7 @@ Default install stays CPU-only (`pip install -e ".[dev]"`). Heavier résumé too
 | MLflow-style tracking | [`experiments.py`](python/helix/experiments.py) | Cannot answer “which rerank/prompt won” after 10 runs. No tracking server required | default |
 | Hybrid retrieval (BM25 + RRF) | [`bm25.py`](python/helix/bm25.py) | Token-overlap scoring has no saturation and no IDF, and raw-score blending mixes incomparable scales. Okapi BM25 fixes term weighting; RRF (Cormack et al., SIGIR 2009) fuses on rank, not score | default |
 | RankNet reranker + acceptance gate | [`reranker.py`](python/helix/reranker.py) | A fitted reranker that loses to a hand prior still ships in most demos. Here C is picked by query-grouped CV inside the train split, the holdout is read only by the gate, and a losing artifact degrades to the prior with the reason on record | default |
+| Multi-tier reranking (fast/accurate/fine-tuned) | [`finetuned_reranker.py`](python/helix/finetuned_reranker.py), [`train_finetuned.py`](python/helix/train_finetuned.py) | Production systems need to ship today and improve tomorrow. Three tiers: sklearn (1ms, interpretable), HF CrossEncoder (50ms, off-the-shelf), PyTorch BERT fine-tuned on domain data (50ms, domain-adapted). Operator picks via `HELIX_RERANKER_TIER`. Model weights gitignored; metadata committed | `[train]` + GPU for fine-tuned tier; fast/accurate work without |
 | SFT / LoRA / QLoRA / PEFT | [`finetune.py`](python/helix/finetune.py) | Mouth still rented (Grok) until you train. Export is real TRL JSONL; **weights stay in helix-live** | `[train]` + GPU; `helix finetune` is export-only without CUDA |
 | vLLM | `HELIX_VLLM_URL` + compose profile `vllm` | API p95 and offline copilot **after** you have weights. Empty vLLM is décor — profile is opt-in | GPU |
 | EvalForge gates | [`evals.py`](python/helix/evals.py) + `helix redteam` | Prompt drift, jailbreaks, invented VaR | default |
