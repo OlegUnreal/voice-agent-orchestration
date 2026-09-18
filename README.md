@@ -103,6 +103,8 @@ Try: *What is BTC’s current regime?* · *Portfolio risk if BTC drops 12 percen
 
 ## Architecture
 
+![Helix Architecture](docs/architecture.png)
+
 Tool-first supervisor, not ReAct, not a multi-LLM swarm. Two hops: route intent, one specialist runs a governed bundle. Then a **verifier**. Then (optional) Grok narration — verified again before TTS.
 
 ```mermaid
