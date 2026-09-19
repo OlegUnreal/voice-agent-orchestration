@@ -309,3 +309,9 @@ src/components/helix/    Voice, Markets, RAG, Gateway, Evals, Training
 ```bash
 npm ci && npm run typecheck && npm run build
 ```
+
+## License
+
+MIT.
+
+*Last updated: 2026-09-19*
